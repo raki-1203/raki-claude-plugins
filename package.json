@@ -1,0 +1,12 @@
+{
+  "name": "obsidian-wiki-plugin",
+  "version": "1.0.0",
+  "description": "Karpathy-style LLM Wiki management plugin for Claude Code + Obsidian",
+  "type": "module",
+  "license": "MIT",
+  "author": "raki-1203",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:raki-1203/obsidian-wiki-plugin.git"
+  }
+}

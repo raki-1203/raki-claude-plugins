@@ -1,0 +1,9 @@
+{
+  "obsidian": {
+    "command": "npx",
+    "args": [
+      "@bitbonsai/mcpvault@latest",
+      "${OBSIDIAN_VAULT_PATH}"
+    ]
+  }
+}
