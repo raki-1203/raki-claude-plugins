@@ -1,0 +1,20 @@
+{
+  "name": "obsidian-wiki-plugin",
+  "owner": {
+    "name": "raki-1203",
+    "email": "raki.1203@gmail.com"
+  },
+  "metadata": {
+    "description": "Karpathy-style LLM Wiki management for Obsidian — Ingest, Query, Lint",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "obsidian-wiki",
+      "source": "./",
+      "description": "LLM Wiki management skills: wiki-ingest (collect sources), wiki-query (search & answer), wiki-lint (health check). Based on Andrej Karpathy's 3-layer architecture.",
+      "category": "knowledge-management",
+      "tags": ["obsidian", "wiki", "knowledge-base", "karpathy", "pkm"]
+    }
+  ]
+}
