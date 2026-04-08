@@ -1,13 +1,13 @@
 {
-  "name": "obsidian-wiki",
-  "description": "Karpathy-style LLM Wiki management for Obsidian — Ingest, Query, Lint operations on a 3-layer vault (raw/wiki/schema)",
+  "name": "rakis",
+  "description": "Personal Claude Code plugin collection by raki-1203",
   "version": "1.0.0",
   "author": {
     "name": "raki-1203",
     "url": "https://github.com/raki-1203"
   },
-  "homepage": "https://github.com/raki-1203/obsidian-wiki-plugin",
-  "repository": "https://github.com/raki-1203/obsidian-wiki-plugin",
+  "homepage": "https://github.com/raki-1203/raki-claude-plugins",
+  "repository": "https://github.com/raki-1203/raki-claude-plugins",
   "license": "MIT",
-  "keywords": ["obsidian", "wiki", "knowledge-base", "karpathy", "pkm"]
+  "keywords": ["claude-code", "plugin", "skills"]
 }
