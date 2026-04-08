@@ -1,8 +1,12 @@
-# obsidian-wiki-plugin
+# raki-claude-plugins
 
-Karpathy-style LLM Wiki management plugin for Claude Code + Obsidian.
+Personal Claude Code plugin collection by raki-1203.
 
-## What it does
+## Plugins
+
+### obsidian-wiki
+
+Karpathy-style LLM Wiki management for Obsidian.
 
 Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Karpathy's 3-layer architecture:
 
@@ -10,18 +14,19 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 - **`wiki/`** — LLM-generated pages (concepts, entities, sources, comparisons)
 - **Schema** — CLAUDE.md defines conventions and rules
 
-## Skills
+#### Skills
 
 | Skill | Trigger | What it does |
 |-------|---------|-------------|
 | `wiki-ingest` | "저장해줘", "위키에 넣어줘" | Save source to raw/, create/update wiki pages |
 | `wiki-query` | "~에 대해 정리된 거 있어?" | Search wiki via index.md, answer with citations |
 | `wiki-lint` | "위키 점검해줘" | Health check: contradictions, orphans, gaps |
+| `wiki-wrap-up` | 세션 종료 시 | Session-end knowledge capture |
 
 ## Installation
 
 ```bash
-claude plugin install github:raki-1203/obsidian-wiki-plugin
+claude plugin install github:raki-1203/raki-claude-plugins
 ```
 
 ## Setup
