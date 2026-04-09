@@ -189,7 +189,7 @@ Agent(
   description: "NotebookLM 마인드맵 생성",
   prompt: "NotebookLM에서 마인드맵을 생성하고 다운로드하라.
 1. notebooklm use {notebook_id}
-2. notebooklm generate mind-map --wait
+2. notebooklm generate mind-map
 3. notebooklm download mind-map /tmp/{repo}-mindmap.json
 반환: 마인드맵 JSON 내용."
 )

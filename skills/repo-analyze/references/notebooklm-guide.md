@@ -76,7 +76,7 @@ notebooklm download report ./report.md
 ### 마인드맵
 
 ```bash
-notebooklm generate mind-map --wait
+notebooklm generate mind-map
 notebooklm download mind-map ./mindmap.json
 ```
 
