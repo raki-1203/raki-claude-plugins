@@ -9,7 +9,7 @@ notebooklm-py CLI를 사용하여 NotebookLM과 프로그래밍 방식으로 연
 ### 설치 확인
 
 ```bash
-command -v notebooklm || pip install notebooklm
+command -v notebooklm || pip install notebooklm-py
 ```
 
 ### 인증 확인
@@ -100,6 +100,18 @@ notebooklm download slide-deck ./slides.pptx --format pptx
 notebooklm generate infographic --orientation landscape --wait
 notebooklm download infographic ./infographic.png
 ```
+
+## 리서치 (웹 검색)
+
+```bash
+notebooklm source add-research "{검색 주제}" --mode deep --import-all
+```
+
+- `--mode fast`: 빠른 검색 (기본)
+- `--mode deep`: 깊은 검색
+- `--import-all`: 발견된 소스를 자동으로 노트북에 추가
+
+유사 프로젝트 비교 등에 활용.
 
 ## 대화 이력 저장
 

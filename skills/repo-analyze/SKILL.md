@@ -20,8 +20,8 @@ URL 입력 → repomix → 병렬 수집 → NotebookLM 분석 → 병렬 생성
 스킬 실행 시 가장 먼저 확인:
 
 1. URL에서 `{owner}/{repo}` 파싱
-2. `command -v notebooklm` — 없으면 `pip install notebooklm` 안내
-3. `notebooklm auth check --test` — 실패 시 `! notebooklm login` 안내. 사용자가 거부하면 fallback 모드(Claude 직접 분석)로 전환
+2. `command -v notebooklm` — 없으면 `pip install notebooklm-py` 안내 (PyPI 패키지명: `notebooklm-py`, CLI 명령어: `notebooklm`)
+3. `notebooklm auth check --test` — 실패 시 `! notebooklm login` 안내. 사용자가 거부하면 fallback 모드(Claude 직접 분석)로 전환. **NotebookLM 연동은 선택적** — fallback(Claude 직접 분석)으로도 핵심 기능은 동작한다.
 4. `gh auth status` — 실패 시 커뮤니티 활성도 수집 건너뜀
 
 ## Phase 1: repomix 실행
@@ -36,9 +36,15 @@ gh repo clone {owner}/{repo} /tmp/{repo} --depth 1
 npx repomix /tmp/{repo} --output /tmp/repomix-{repo}.txt
 ```
 
+## 오케스트레이션 규칙
+
+- **변수 치환**: Agent 프롬프트의 `{owner}`, `{repo}`, `{notebook_id}` 등은 템플릿 플레이스홀더다. 디스패치 전에 실제 값으로 치환하여 프롬프트 문자열을 구성한 뒤 Agent를 호출한다.
+- **병렬 디스패치**: "병렬" 표기된 Phase에서는 반드시 **하나의 메시지에서 모든 Agent 호출을 동시에 보낸다** (`run_in_background: true`).
+- **순차 의존**: Phase N+1은 Phase N의 모든 Agent가 결과를 반환한 후에 시작한다.
+
 ## Phase 2: 병렬 정보 수집
 
-3개의 서브에이전트를 동시에 디스패치한다. **반드시 하나의 메시지에서 3개 Agent 호출을 병렬로 보낸다.**
+> **병렬 디스패치**: 아래 3개 Agent를 하나의 메시지에서 동시에 호출한다.
 
 ### Agent A: 커뮤니티 활성도 [Haiku]
 
@@ -77,7 +83,12 @@ Agent(
 절차:
 1. 파일을 Read 도구로 읽는다 (대용량이면 처음 3000줄 + 마지막 500줄)
 2. repo 유형을 판별한다 (프레임워크, CLI, 라이브러리, 앱, 플러그인, 데이터 파이프라인, AI/ML 등)
-3. references/common-questions.md의 공통 질문 5개를 확인한다
+3. 공통 질문 5개를 사용한다:
+   - '이 프로젝트가 해결하려는 핵심 문제는 무엇이고, 어떤 사용자/상황을 타겟으로 하는가?'
+   - '사용된 기술 스택(언어, 프레임워크, 주요 의존성)을 정리하고, 각 선택의 이유를 추론해줘.'
+   - '프로젝트 디렉토리 구조를 설명하고, 각 주요 모듈/패키지의 역할과 데이터 흐름을 정리해줘.'
+   - '이 프로젝트를 처음 사용하려면 어떻게 설치하고 실행하나? 최소한의 시작 가이드를 작성해줘.'
+   - '이 프로젝트의 핵심 강점과 한계를 각각 3가지씩 분석해줘.'
 4. repo 유형과 특성에 맞는 맞춤 질문 5~10개를 생성한다
 
 반환 형식:
@@ -152,7 +163,9 @@ Agent(
 
 ## Phase 4: 병렬 콘텐츠 생성
 
-NotebookLM fallback 모드면 이 Phase는 건너뛴다. 3개의 서브에이전트를 동시에 디스패치.
+NotebookLM fallback 모드면 이 Phase는 건너뛴다 (Phase 5에서 해당 섹션을 "NotebookLM 미사용 — 해당 항목 없음"으로 표기).
+
+> **병렬 디스패치**: 아래 3개 Agent를 하나의 메시지에서 동시에 호출한다.
 
 ### Agent D: 리포트 생성 [Haiku]
 
@@ -229,13 +242,13 @@ Agent(
 {Phase 3 맞춤 질문 답변}
 
 ## 리포트
-{Agent D 결과}
+{Agent D 결과 — NotebookLM 미사용 시 "NotebookLM 미사용 — 해당 항목 없음"}
 
 ## 마인드맵
-{Agent E 결과 — JSON을 마크다운 계층 목록으로 변환}
+{Agent E 결과를 마크다운 계층 목록으로 변환 — NotebookLM 미사용 시 "NotebookLM 미사용 — 해당 항목 없음"}
 
 ## NotebookLM
-- 노트북 ID: {notebook_id}
+- 노트북 ID: {notebook_id 또는 "미생성"}
 - 추가 질의: `notebooklm use {notebook_id} && notebooklm ask "질문"`
 ```
 
@@ -255,11 +268,12 @@ raw/repos/{repo명}/
   └── analysis.md    ← Phase 5 통합 문서 전문
 ```
 
-wiki-ingest 스킬을 호출하여:
-1. `wiki/sources/{repo명}.md` 생성 — 분석 정제본
-2. `index.md` 갱신
-3. `log.md` 기록
-4. 관련 기존 wiki 페이지와 `[[위키링크]]` 연결
+wiki-ingest의 절차를 따라 직접 실행한다 (스킬 정의: `skills/wiki-ingest/SKILL.md` 참조):
+1. `raw/repos/{repo명}/` 에 metadata.md, analysis.md 저장 (immutable)
+2. `wiki/sources/{repo명}.md` 생성 — 분석 정제본 (YAML frontmatter 필수)
+3. `index.md` 갱신 — 새 페이지 링크 추가
+4. `log.md` 기록 — `## [YYYY-MM-DD] {repo명} | repo 분석 저장`
+5. 관련 기존 wiki 페이지와 `[[위키링크]]` 연결
 
 ## 확장 분석 (사용자 요청 시)
 
