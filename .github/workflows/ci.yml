@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Skill Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lint
+        run: ./lint.sh
+
+  structure:
+    name: Plugin Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: plugin.json 유효성
+        run: |
+          python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))"
+          echo "✅ plugin.json valid JSON"
+
+      - name: package.json 유효성
+        run: |
+          python3 -c "import json; json.load(open('package.json'))"
+          echo "✅ package.json valid JSON"
+
+      - name: 버전 일치 확인
+        run: |
+          V_PLUGIN=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          V_PACKAGE=$(python3 -c "import json; print(json.load(open('package.json'))['version'])")
+          if [ "$V_PLUGIN" != "$V_PACKAGE" ]; then
+            echo "❌ 버전 불일치: plugin.json=$V_PLUGIN, package.json=$V_PACKAGE"
+            exit 1
+          fi
+          echo "✅ 버전 일치: $V_PLUGIN"
+
+      - name: 모든 스킬에 SKILL.md 존재
+        run: |
+          FAIL=0
+          for dir in skills/*/; do
+            if [ ! -f "$dir/SKILL.md" ]; then
+              echo "❌ $dir: SKILL.md 없음"
+              FAIL=1
+            fi
+          done
+          [ "$FAIL" -eq 0 ] && echo "✅ 모든 스킬에 SKILL.md 존재"
+          exit $FAIL
+
+      - name: SKILL.md 500줄 제한
+        run: |
+          FAIL=0
+          for f in skills/*/SKILL.md; do
+            LINES=$(wc -l < "$f")
+            if [ "$LINES" -gt 500 ]; then
+              echo "❌ $f: ${LINES}줄 (500줄 초과)"
+              FAIL=1
+            fi
+          done
+          [ "$FAIL" -eq 0 ] && echo "✅ 모든 SKILL.md 500줄 이내"
+          exit $FAIL
+
+      - name: frontmatter name과 디렉토리명 일치
+        run: |
+          FAIL=0
+          for dir in skills/*/; do
+            SKILL_NAME=$(basename "$dir")
+            FM_NAME=$(grep "^name:" "$dir/SKILL.md" | head -1 | sed 's/name: *//')
+            if [ "$FM_NAME" != "$SKILL_NAME" ]; then
+              echo "❌ $SKILL_NAME: frontmatter name=$FM_NAME"
+              FAIL=1
+            fi
+          done
+          [ "$FAIL" -eq 0 ] && echo "✅ 모든 스킬 name 일치"
+          exit $FAIL
+
+      - name: references 참조 일관성
+        run: |
+          FAIL=0
+          for dir in skills/*/; do
+            [ -d "${dir}references" ] || continue
+            SKILL_FILE="${dir}SKILL.md"
+            for ref in $(grep -oE 'references/[a-z0-9_-]+\.md' "$SKILL_FILE" 2>/dev/null | sort -u); do
+              if [ ! -f "${dir}${ref}" ]; then
+                echo "❌ $(basename "$dir"): $ref 참조하지만 파일 없음"
+                FAIL=1
+              fi
+            done
+          done
+          [ "$FAIL" -eq 0 ] && echo "✅ references 참조 일관성 OK"
+          exit $FAIL
