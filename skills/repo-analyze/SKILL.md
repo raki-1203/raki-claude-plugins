@@ -23,6 +23,7 @@ URL 입력 → repomix → 병렬 수집 → NotebookLM 분석 → 병렬 생성
 2. `command -v notebooklm` — 없으면 `pip install notebooklm-py` 안내 (PyPI 패키지명: `notebooklm-py`, CLI 명령어: `notebooklm`)
 3. `notebooklm auth check --test` — 실패 시 `! notebooklm login` 안내. 사용자가 거부하면 fallback 모드(Claude 직접 분석)로 전환. **NotebookLM 연동은 선택적** — fallback(Claude 직접 분석)으로도 핵심 기능은 동작한다.
 4. `gh auth status` — 실패 시 커뮤니티 활성도 수집 건너뜀
+5. `command -v graphify` — 없으면 `uv tool install graphifyy --python 3.13` 안내. 없어도 파이프라인은 NotebookLM만으로 동작.
 
 ## Phase 1: repomix 실행
 
@@ -44,7 +45,7 @@ npx repomix /tmp/{repo} --output /tmp/repomix-{repo}.txt
 
 ## Phase 2: 병렬 정보 수집
 
-> **병렬 디스패치**: 아래 3개 Agent를 하나의 메시지에서 동시에 호출한다.
+> **병렬 디스패치**: 아래 4개 Agent를 하나의 메시지에서 동시에 호출한다 (Agent A, B, C + Agent G).
 
 ### Agent A: 커뮤니티 활성도 [Haiku]
 
@@ -122,6 +123,31 @@ Agent(
 
 반환: 노트북 ID와 소스 업로드 결과.
 업로드 실패 시 에러 메시지를 그대로 반환하라."
+)
+```
+
+### Agent G: graphify 구조 분석 [Sonnet]
+
+> graphify가 설치되어 있을 때만 실행. 미설치 시 건너뜀.
+
+```
+Agent(
+  model: "sonnet",
+  description: "graphify 구조적 분석",
+  prompt: "graphify CLI를 사용하여 repo의 구조적 분석을 수행하라.
+
+Bash 도구로 실행:
+1. cd /tmp/{repo} (repomix가 클론한 경로) 또는 gh repo clone {owner}/{repo} /tmp/{repo}-graphify --depth 1
+2. cd /tmp/{repo}-graphify && graphify
+
+graphify가 생성하는 파일들:
+- graphify-out/graph.json — 지식 그래프
+- graphify-out/GRAPH_REPORT.md — 갓노드, 서프라이징 연결, 커뮤니티 분석
+
+3. GRAPH_REPORT.md 내용을 Read로 읽어서 전문 반환
+4. graph.json에서 주요 통계 반환 (노드 수, 엣지 수, 커뮤니티 수)
+
+반환: GRAPH_REPORT.md 전문 + graph.json 통계 요약"
 )
 ```
 
@@ -247,6 +273,18 @@ Agent(
 ## 마인드맵
 {Agent E 결과를 마크다운 계층 목록으로 변환 — NotebookLM 미사용 시 "NotebookLM 미사용 — 해당 항목 없음"}
 
+## 구조적 분석 (graphify)
+{Agent G 결과 — graphify 미실행 시 "graphify 미설치 — 해당 항목 없음"}
+
+### God Nodes (핵심 허브)
+{GRAPH_REPORT.md에서 추출}
+
+### Surprising Connections
+{GRAPH_REPORT.md에서 추출}
+
+### 커뮤니티 구조
+{GRAPH_REPORT.md에서 추출}
+
 ## NotebookLM
 - 노트북 ID: {notebook_id 또는 "미생성"}
 - 추가 질의: `notebooklm use {notebook_id} && notebooklm ask "질문"`
@@ -265,7 +303,8 @@ Vault 경로 탐지:
 ```
 raw/repos/{repo명}/
   ├── metadata.md    ← Agent A 결과 (커뮤니티 활성도)
-  └── analysis.md    ← Phase 5 통합 문서 전문
+  ├── analysis.md    ← Phase 5 통합 문서 전문
+  └── graph-report.md  ← graphify GRAPH_REPORT.md (있을 때만)
 ```
 
 wiki-ingest의 절차를 따라 직접 실행한다 (스킬 정의: `skills/wiki-ingest/SKILL.md` 참조):
@@ -291,3 +330,4 @@ wiki-ingest의 절차를 따라 직접 실행한다 (스킬 정의: `skills/wiki
 | NotebookLM 질의 실패 | 해당 질문 건너뛰고 진행 |
 | NotebookLM 콘텐츠 생성 실패 | 해당 항목 건너뛰고 보고서에 누락 명시 |
 | gh CLI 실패 | 커뮤니티 활성도 "수집 실패" 표기 |
+| graphify 미설치/실패 | 구조적 분석 건너뛰고 나머지 진행, 보고서에 "graphify 미실행" 표기 |
