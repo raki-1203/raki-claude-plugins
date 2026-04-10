@@ -1,11 +1,26 @@
 #!/bin/bash
-# pre-push hook: lint 실패하면 push 차단
+# pre-push hook: lint + 통합 테스트 실행
+# 통합 테스트 건너뛰기: SKIP_TEST=1 git push
 
 echo "🔍 pre-push: lint 실행 중..."
 
-if ./lint.sh; then
-  echo "✅ lint 통과 — push 진행"
-else
-  echo "❌ lint 실패 — push 차단. ./lint.sh 로 확인하세요."
+if ! ./lint.sh; then
+  echo "❌ lint 실패 — push 차단"
   exit 1
 fi
+
+if [ "${SKIP_TEST:-0}" = "1" ]; then
+  echo "⏭️  SKIP_TEST=1 — 통합 테스트 건너뜀"
+  exit 0
+fi
+
+echo ""
+echo "🔬 pre-push: 통합 테스트 실행 중... (건너뛰려면 SKIP_TEST=1 git push)"
+echo ""
+
+if ! ./test.sh; then
+  echo "❌ 통합 테스트 실패 — push 차단. ./test.sh 로 확인하세요."
+  exit 1
+fi
+
+echo "✅ 전체 테스트 통과 — push 진행"
