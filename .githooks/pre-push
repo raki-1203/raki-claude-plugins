@@ -1,0 +1,11 @@
+#!/bin/bash
+# pre-push hook: lint 실패하면 push 차단
+
+echo "🔍 pre-push: lint 실행 중..."
+
+if ./lint.sh; then
+  echo "✅ lint 통과 — push 진행"
+else
+  echo "❌ lint 실패 — push 차단. ./lint.sh 로 확인하세요."
+  exit 1
+fi
