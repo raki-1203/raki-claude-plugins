@@ -15,9 +15,9 @@ PASS=0
 FAIL=0
 SKIP=0
 
-pass() { ((PASS++)); echo "  ✅ $1"; }
-fail() { ((FAIL++)); echo "  ❌ $1"; }
-skip() { ((SKIP++)); echo "  ⏭️  $1"; }
+pass() { PASS=$((PASS + 1)); echo "  ✅ $1"; }
+fail() { FAIL=$((FAIL + 1)); echo "  ❌ $1"; }
+skip() { SKIP=$((SKIP + 1)); echo "  ⏭️  $1"; }
 
 TARGET="${1:-all}"
 
