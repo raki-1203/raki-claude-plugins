@@ -46,12 +46,49 @@ GitHub repo URL도 추가 소스로 등록:
 notebooklm source add "https://github.com/{owner}/{repo}"
 ```
 
-### 파일 크기 제한
+### 대용량 파일 처리 (필수)
 
-- 20MB 초과 시 업로드가 타임아웃될 수 있음
-- 대안 1: repomix의 `--compress` 옵션 사용
-- 대안 2: 파일을 분할하여 여러 소스로 업로드
-- 대안 3: fallback으로 전환
+repomix 출력이 클 때 업로드 실패를 방지하는 단계적 대응:
+
+**1단계: 크기 확인**
+```bash
+wc -c /tmp/repomix-{repo}.txt
+```
+
+**2단계: 크기별 대응**
+
+| 크기 | 대응 |
+|------|------|
+| < 2MB | 그대로 업로드 |
+| 2~10MB | compress 시도 → 여전히 > 2MB면 분할 |
+| > 10MB | 바로 분할 |
+
+**3단계: compress 시도**
+```bash
+npx repomix --remote {owner}/{repo} --compress --output /tmp/repomix-{repo}-compressed.txt
+```
+
+**4단계: 파일 분할 업로드** (compress 후에도 > 2MB일 때)
+
+repomix 출력은 파일별로 `====` 구분선이 있다. 이 구분선을 기준으로 2MB 단위로 분할:
+
+```bash
+# 분할 스크립트 (파일 경계에서 나눔)
+split -b 2m /tmp/repomix-{repo}.txt /tmp/repomix-{repo}-part-
+# 또는 Python으로 파일 구분선(====) 기준 분할
+```
+
+분할된 각 파트를 별도 소스로 업로드:
+```bash
+notebooklm source add /tmp/repomix-{repo}-part-aa --title "{repo} (1/3)"
+notebooklm source add /tmp/repomix-{repo}-part-ab --title "{repo} (2/3)"
+notebooklm source add /tmp/repomix-{repo}-part-ac --title "{repo} (3/3)"
+```
+
+**주의**: 
+- 원본 파일을 그대로 재업로드하는 것은 금지 — 더 큰 파일을 올리면 의미 없음
+- 분할 시 파일 중간에서 자르지 않고 repomix의 파일 구분선에서 나눔
+- 분할 실패 시에만 Claude fallback으로 전환
 
 ## 질의
 
