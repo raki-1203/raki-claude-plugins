@@ -58,7 +58,7 @@ test_deps() {
   if command -v graphify &>/dev/null; then
     pass "graphify CLI 설치됨"
   else
-    skip "graphify 미설치 — 구조 분석 테스트 건너뜀"
+    fail "graphify 미설치 — uv tool install graphifyy --python 3.13"
   fi
 
   echo ""
