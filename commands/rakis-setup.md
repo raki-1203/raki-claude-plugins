@@ -37,6 +37,8 @@ command -v uv
   ```
   설치 후 PATH 갱신을 위해 사용자에게 새 셸 또는 `source ~/.zshrc`(또는 동등) 안내. 거부 시 setup 중단 (마커 만들지 마세요).
 
+> **주의**: `uv` 설치 직후에는 현재 세션에서 PATH가 아직 갱신되지 않아 `command -v uv`가 계속 실패할 수 있습니다. 이 경우 사용자에게 "새 터미널을 열고 `/rakis-setup`을 다시 실행해주세요"라고 안내한 뒤 **이 세션에서는 중단**하세요 (마커 만들지 마세요). 같은 세션에서 재설치를 반복하지 마세요.
+
 ## 단계 2: 의존성 점검
 
 다음 도구들의 설치 여부를 `command -v`로 확인하세요.
@@ -44,7 +46,7 @@ command -v uv
 | 도구 | 체크 명령 | 설치 명령 |
 |------|----------|----------|
 | `notebooklm-py` | `command -v notebooklm` | `uv tool install notebooklm-py --with playwright` |
-| `node`/`npm` | `command -v npm` | `brew install node` |
+| `node` | `command -v node` | `brew install node` |
 | `gh` | `command -v gh` | `brew install gh` |
 | `graphify` | `command -v graphify` | `uv tool install graphifyy --python 3.13` |
 
@@ -83,7 +85,7 @@ command -v uv
 
 각 설치 명령은 Bash 도구로 직접 실행. Claude Code의 권한 prompt가 사용자에게 한 번 더 확인을 받습니다.
 
-설치 중 하나라도 실패하면, **마커를 만들지 말고** 사용자에게 어떤 게 실패했는지 보고한 뒤 종료. 다음에 `/rakis-setup`을 다시 실행하면 빠진 것만 다시 시도합니다.
+설치 중 하나라도 실패하면, **마커를 만들지 말고** 사용자에게 어떤 게 실패했는지 보고한 뒤 종료. 앞서 성공한 도구들은 시스템에 이미 설치된 상태로 유지되므로, 다음 `/rakis-setup` 재실행 시 빠진 것만 다시 시도됩니다 (idempotent).
 
 ## 단계 5: 인터랙티브 인증 안내
 
@@ -132,4 +134,4 @@ touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
 
 `/rakis-setup`은 언제 다시 실행해도 안전합니다:
 - 마커가 있어도 점검을 다시 수행. 모두 ✓이면 "이미 setup 완료" 출력 후 즉시 종료.
-- 일부만 설치된 부분 상태 → 빠진 것만 다시 시도.
+- 일부만 설치된 부분 상태 → 단계 2부터 다시 실행. 빠진 게 있으면 단계 3의 `[a]/[c]/[s]` 프롬프트가 다시 출현하고, 사용자 선택에 따라 빠진 것만 설치합니다.
