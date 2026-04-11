@@ -36,7 +36,7 @@ claude plugin install github:raki-1203/raki-claude-plugins
 플러그인 설치 후 한 번만 실행해주세요:
 
 ```text
-/rakis-setup
+/rakis:setup
 ```
 
 `source-analyze`, `project-graph` 등 일부 스킬에 필요한 외부 도구(notebooklm-py, gh, graphify, node)를 점검하고, 누락된 것을 동의 후 설치합니다. Python 툴 관리자 `uv`도 없으면 같이 자동 설치됩니다.

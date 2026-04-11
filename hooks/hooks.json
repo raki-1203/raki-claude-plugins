@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f \"${CLAUDE_PLUGIN_DATA}/.setup-done\" || echo '[rakis] 처음 사용이시네요. /rakis-setup 을 먼저 실행해주세요.'",
+            "command": "test -f \"${CLAUDE_PLUGIN_DATA}/.setup-done\" || echo '[rakis] 플러그인 setup이 아직 완료되지 않았습니다. /rakis:setup 을 실행해주세요.'",
             "timeout": 5
           }
         ]

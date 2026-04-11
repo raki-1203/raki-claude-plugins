@@ -58,7 +58,7 @@ test_deps() {
   if command -v graphify &>/dev/null; then
     pass "graphify CLI 설치됨"
   else
-    fail "graphify 미설치 — uv tool install graphifyy --python 3.13"
+    fail "graphify 미설치 — uv tool install graphifyy --python 3.13 (또는 /rakis:setup 으로 일괄 설치)"
   fi
 
   echo ""
