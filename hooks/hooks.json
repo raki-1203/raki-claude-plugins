@@ -1,0 +1,17 @@
+{
+  "description": "rakis 플러그인 SessionStart 안내",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f \"${CLAUDE_PLUGIN_DATA}/.setup-done\" || echo '[rakis] 처음 사용이시네요. /rakis-setup 을 먼저 실행해주세요.'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
