@@ -92,19 +92,15 @@ raki-claude-plugins/
   notebooklm-py    ✗   uv tool install notebooklm-py --with playwright
   node             ✓
   gh               ✗   brew install gh
-
-[선택]
   graphify         ✗   uv tool install graphifyy --python 3.13
-                       (project-graph 스킬 + source-analyze 코드 분석용)
 ```
 
 #### 단계 3: 사용자 선택
 
 빠진 게 있으면:
 ```
-필수 N개, 선택 M개 누락. 어떻게 진행할까요?
-[a] 필수만 설치
-[b] 전체 설치 (필수 + 선택)
+필수 N개 누락. 어떻게 진행할까요?
+[a] 모두 설치
 [c] 항목별 선택
 [s] 건너뛰기 (마커는 만듦, 더 안내 안 함)
 ```
@@ -142,7 +138,7 @@ touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
 | `node`/`npm` | 필수 | `command -v npm` | `brew install node` | repomix가 npx로 실행하기 위해 필요 |
 | `notebooklm-py` | 필수 | `command -v notebooklm` | `uv tool install notebooklm-py --with playwright` | source-analyze 핵심 엔진. playwright 브라우저는 함께 설치됨 |
 | `gh` | 필수 | `command -v gh` | `brew install gh` | GitHub repo 분석용 |
-| `graphify` | 선택 | `command -v graphify` | `uv tool install graphifyy --python 3.13` | PyPI 패키지명은 `graphifyy` (오타 아님), 명령어는 `graphify`. project-graph 스킬과 source-analyze 코드 분석 양쪽에서 사용 |
+| `graphify` | 필수 | `command -v graphify` | `uv tool install graphifyy --python 3.13` | project-graph 스킬과 source-analyze 코드 분석 양쪽에서 사용. PyPI 패키지명은 `graphifyy` (오타 아님), 명령어는 `graphify` |
 
 ### 특수 항목
 
@@ -173,7 +169,7 @@ uv 존재?  ── No ──→ 동의 후 설치
        ↓
 빠진 거 있나?  ── No ──→ "이미 setup 완료" 출력 + 마커 생성
        ↓ Yes
-사용자 선택 (a/b/c/s)
+사용자 선택 (a/c/s)
        ↓
 설치 명령 순차 실행 (각각 권한 prompt)
        ↓
@@ -238,8 +234,7 @@ PPT/PPTX, DOCX 처리 기능을 완전히 제거한다.
 | 시나리오 | 기대 동작 |
 |---------|----------|
 | 의존성이 모두 있는 환경 → `/rakis-setup` 실행 | "이미 모두 설치되어 있습니다" 출력 + 마커 생성 |
-| 일부 빠진 환경 → `/rakis-setup` → [a] 필수만 | 필수만 설치, 선택 항목 skip, 마커 생성 |
-| 일부 빠진 환경 → `/rakis-setup` → [b] 전체 | 모두 설치, 마커 생성 |
+| 일부 빠진 환경 → `/rakis-setup` → [a] 모두 설치 | 빠진 도구 모두 설치, 마커 생성 |
 | 일부 빠진 환경 → `/rakis-setup` → [c] 항목별 | 사용자가 선택한 것만 설치 |
 | 일부 빠진 환경 → `/rakis-setup` → [s] 건너뛰기 | 아무것도 설치 안 함, 마커는 생성 |
 | brew 없는 환경 → `/rakis-setup` | 안내 후 중단, 마커 X |
