@@ -31,6 +31,20 @@ claude plugin install github:raki-1203/raki-claude-plugins
 
 ## Setup
 
+### 1. 의존성 설치
+
+플러그인 설치 후 한 번만 실행해주세요:
+
+```
+/rakis-setup
+```
+
+`source-analyze`, `project-graph` 등 일부 스킬에 필요한 외부 도구(notebooklm-py, gh, graphify, node)를 점검하고, 누락된 것을 동의 후 설치합니다.
+
+전제조건: macOS, Homebrew. brew가 없으면 setup 시작 시 안내합니다.
+
+### 2. Obsidian Vault 경로
+
 Set your vault path as an environment variable:
 
 ```bash
