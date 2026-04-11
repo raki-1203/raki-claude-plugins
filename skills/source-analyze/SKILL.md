@@ -1,6 +1,6 @@
 ---
 name: source-analyze
-description: "다양한 소스(GitHub repo, 블로그, 논문 PDF, YouTube, LinkedIn, X, PPT, 문서 등)를 자동 분석하여 Obsidian 위키에 지식으로 축적. URL이나 파일과 함께 '분석', '파악', '정리', '알아봐', '분석해줘', '이게 뭐야', '살펴봐', '요약해줘'라고 하면 이 스킬 사용. '/source-analyze URL'로도 직접 호출 가능. 여러 소스를 한번에 비교 분석도 가능('비교해줘', 'vs'). NotebookLM을 핵심 분석 엔진으로 사용하여 요약·리포트·마인드맵을 자동 생성. GitHub repo는 repomix+graphify로 코드 구조까지 분석. 분석 후 '더 깊이', '비교해줘', '팟캐스트로', '슬라이드로' 등 추가 분석도 지원. 이미 분석된 소스는 캐시 재사용."
+description: "다양한 소스(GitHub repo, 블로그, 논문 PDF, YouTube, LinkedIn, X 등)를 자동 분석하여 Obsidian 위키에 지식으로 축적. URL이나 파일과 함께 '분석', '파악', '정리', '알아봐', '분석해줘', '이게 뭐야', '살펴봐', '요약해줘'라고 하면 이 스킬 사용. '/source-analyze URL'로도 직접 호출 가능. 여러 소스를 한번에 비교 분석도 가능('비교해줘', 'vs'). NotebookLM을 핵심 분석 엔진으로 사용하여 요약·리포트·마인드맵을 자동 생성. GitHub repo는 repomix+graphify로 코드 구조까지 분석. 분석 후 '더 깊이', '비교해줘', '팟캐스트로', '슬라이드로' 등 추가 분석도 지원. 이미 분석된 소스는 캐시 재사용."
 version: 2.0.0
 license: MIT
 ---
@@ -34,8 +34,6 @@ URL, 파일, 텍스트 등 다양한 소스를 NotebookLM을 핵심 엔진으로
 | **웹 URL** (블로그, 뉴스) | `http(s)://` (GitHub/YouTube 제외) | URL 직접 업로드 | 없음 |
 | **YouTube** | `youtube.com/`, `youtu.be/` | YouTube 소스 | 없음 |
 | **PDF** | `.pdf` 확장자 또는 MIME | 파일 직접 업로드 | 없음 |
-| **PPT/PPTX** | `.ppt`, `.pptx` | 텍스트 (변환 필요) | `python-pptx` → 마크다운 변환 → 텍스트 업로드 |
-| **DOCX** | `.docx` | 텍스트 (변환 필요) | `python-docx` → 마크다운 변환 → 텍스트 업로드 |
 | **이미지** | `.png`, `.jpg`, `.svg` 등 | 텍스트 (변환 필요) | Claude Vision으로 설명 추출 → 텍스트 업로드 |
 | **LinkedIn** | `linkedin.com/` | 텍스트 (추출 필요) | WebFetch → 텍스트 추출 → 텍스트 업로드 |
 | **X/Twitter** | `x.com/`, `twitter.com/` | 텍스트 (추출 필요) | WebFetch → 텍스트 추출 → 텍스트 업로드 |
@@ -45,35 +43,6 @@ URL, 파일, 텍스트 등 다양한 소스를 NotebookLM을 핵심 엔진으로
 
 > **GitHub repo 전처리**: `references/agent-prompts.md` 참조 (repomix + graphify)
 > **대용량 파일 처리**: `references/notebooklm-guide.md`의 "대용량 파일 처리" 참조
-
-**PPT/PPTX 변환**:
-```bash
-python3 -c "
-from pptx import Presentation
-import sys
-prs = Presentation(sys.argv[1])
-for i, slide in enumerate(prs.slides):
-    print(f'## 슬라이드 {i+1}')
-    for shape in slide.shapes:
-        if shape.has_text_frame:
-            print(shape.text)
-    print()
-" {파일경로} > /tmp/converted-{파일명}.md
-```
-
-**DOCX 변환**:
-```bash
-python3 -c "
-from docx import Document
-import sys
-doc = Document(sys.argv[1])
-for p in doc.paragraphs:
-    print(p.text)
-for table in doc.tables:
-    for row in table.rows:
-        print('| ' + ' | '.join(cell.text for cell in row.cells) + ' |')
-" {파일경로} > /tmp/converted-{파일명}.md
-```
 
 **LinkedIn/X 추출**: WebFetch 도구로 URL 콘텐츠를 가져온 뒤, 게시글 본문 + 링크를 텍스트로 정리하여 `notebooklm source add "{텍스트}" --title "{제목}"` 으로 업로드.
 
@@ -179,7 +148,6 @@ Phase 4: Haiku 3개가 리포트/마인드맵/요약 병렬 생성
 | NotebookLM 인증 없음 | 로그인 안내 → Claude fallback |
 | NotebookLM 업로드 실패 | 분할 시도 → 실패 시 Claude fallback |
 | WebFetch 실패 | 사용자에게 텍스트 직접 입력 요청 |
-| PPT/DOCX 변환 실패 | python-pptx/python-docx 설치 안내 |
 | graphify 미설치 | 구조적 분석 건너뜀 |
 
 ## references/ 구조
