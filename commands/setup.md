@@ -101,7 +101,56 @@ command -v uv
 
 (자동 실행 금지 — 인터랙티브 브라우저 로그인이라 자동화 불가)
 
-## 단계 6: 마커 생성
+## 단계 6: 글로벌 CLAUDE.md에 스킬 매핑 추가
+
+글로벌 CLAUDE.md(`~/.claude/CLAUDE.md`)에 rakis 스킬 매핑이 이미 있는지 확인:
+
+```bash
+grep -q "rakis:wiki-query" ~/.claude/CLAUDE.md 2>/dev/null
+```
+
+- **이미 있으면** → "글로벌 CLAUDE.md에 스킬 매핑이 이미 있습니다." 출력하고 다음 단계로
+- **없으면** → 사용자에게 다음과 같이 묻기:
+
+> 글로벌 CLAUDE.md에 rakis 스킬 매핑을 추가할까요?
+> 추가하면 모든 프로젝트에서 위키 검색, 소스 분석 등이 자연스럽게 작동합니다.
+> [y] 추가 / [n] 건너뛰기
+
+**[y] 동의 시**, `~/.claude/CLAUDE.md`를 Read 도구로 읽은 뒤 Edit 도구로 다음 섹션을 추가한다. 파일에 이미 `## Obsidian LLM Wiki` 섹션이 있으면 그 섹션을 교체하고, 없으면 파일 끝에 추가:
+
+```markdown
+## Obsidian LLM Wiki
+
+- **플러그인**: `rakis@raki-claude-plugins`
+- **Vault 경로**: `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault`
+- **구조**: Karpathy 3-Layer (raw/ → wiki/ → schema)
+
+### 스킬 사용 (필수)
+
+위키 관련 작업은 항상 rakis 플러그인 스킬을 사용한다. 직접 파일 조작은 스킬이 로드되지 않은 환경에서만.
+
+| 상황 | 스킬 |
+|------|------|
+| 이전에 조사/저장한 내용 검색·질문 | `rakis:wiki-query` |
+| URL·파일·repo 분석 | `rakis:source-analyze` |
+| 새 지식을 위키에 저장 | `rakis:wiki-ingest` |
+| 세션 마무리 시 학습 기록 | `rakis:wiki-wrap-up` |
+| 위키 건강 점검 (주 1회) | `rakis:wiki-lint` |
+| 프로젝트 코드 구조 분석 | `rakis:project-graph` |
+| 플러그인 의존성 설치 (최초 1회) | `rakis:setup` |
+
+### Wrap-up → Wiki 규칙
+작업 완료 시 (커밋, PR, 큰 태스크 마무리) 다음을 확인:
+- 이 세션에서 **새로 알게 된 것** (도구, 패턴, 트러블슈팅)이 있는가?
+- 위키에 아직 없는 내용인가?
+
+해당되면 사용자에게 제안: "위키에 저장할까요? — {한 줄 요약}"
+승인 시 wiki-ingest 스킬로 저장.
+```
+
+**[n] 거부 시** → 건너뛰기 (마커 생성에 영향 없음).
+
+## 단계 7: 마커 생성
 
 모든 필수 단계가 완료되었거나 사용자가 [s] 건너뛰기를 선택한 경우:
 
@@ -110,7 +159,7 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}"
 touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
 ```
 
-## 단계 7: 결과 요약
+## 단계 8: 결과 요약
 
 다음 형식으로 사용자에게 요약 출력:
 
