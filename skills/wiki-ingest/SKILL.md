@@ -61,12 +61,13 @@ description: 한 줄 요약
 3. 새 개념이 발견되면 → `wiki/concepts/`에 새 페이지
 4. 새 사람/조직이 발견되면 → `wiki/entities/`에 새 페이지
 5. 비교 분석이 필요하면 → `wiki/comparisons/`에 새 페이지
+6. 프로젝트 고유 지식이면 → `wiki/projects/`에 새 페이지 (아키텍처 결정, 상태, 이슈 등)
 
 **하나의 source가 10-15개 기존 페이지에 영향을 줄 수 있다.**
 
 ### 4. index.md 갱신
 
-새로 생성된 모든 페이지를 적절한 섹션(Concepts/Entities/Sources/Comparisons)에 추가.
+새로 생성된 모든 페이지를 적절한 섹션(Concepts/Entities/Sources/Comparisons/Projects)에 추가.
 형식: `- [[page-name]] — 한 줄 설명`
 
 ### 5. log.md 기록
@@ -84,6 +85,7 @@ description: 한 줄 요약
 | entity | `wiki/entities/` | anthropic.md, heo-yechan.md |
 | source-summary | `wiki/sources/` | karpathy-llm-wiki-gist.md |
 | comparison | `wiki/comparisons/` | openclaw-vs-claude-channels.md |
+| project | `wiki/projects/` | claude-config.md, kt-innovation-hub.md |
 
 ## 링킹 규칙
 
