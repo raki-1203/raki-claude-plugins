@@ -29,6 +29,11 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 claude plugin install github:raki-1203/raki-claude-plugins
 ```
 
+개발 시 clone 후:
+```bash
+make init
+```
+
 ## Setup
 
 ### 1. 의존성 설치
