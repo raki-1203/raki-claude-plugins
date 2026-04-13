@@ -1,9 +1,0 @@
-{
-  "obsidian": {
-    "command": "bash",
-    "args": [
-      "-c",
-      "VAULT=\"${OBSIDIAN_VAULT_PATH:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault}\"; exec npx @bitbonsai/mcpvault@latest \"$VAULT\""
-    ]
-  }
-}
