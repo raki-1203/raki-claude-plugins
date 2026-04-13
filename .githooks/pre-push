@@ -9,6 +9,24 @@ if ! ./lint.sh; then
   exit 1
 fi
 
+# ─── 버전 bump 체크 ───
+# 코드 변경이 있는데 version이 안 바뀌었으면 경고
+REMOTE_VERSION=$(git show origin/main:.claude-plugin/plugin.json 2>/dev/null | grep '"version"' | sed 's/.*"\([0-9.]*\)".*/\1/')
+LOCAL_VERSION=$(grep '"version"' .claude-plugin/plugin.json | sed 's/.*"\([0-9.]*\)".*/\1/')
+
+if [ -n "$REMOTE_VERSION" ] && [ "$REMOTE_VERSION" = "$LOCAL_VERSION" ]; then
+  # version이 같으면 코드 파일에 변경이 있는지 확인
+  CODE_CHANGES=$(git diff origin/main --name-only -- skills/ commands/ hooks/ test.sh lint.sh 2>/dev/null | head -1)
+  if [ -n "$CODE_CHANGES" ]; then
+    echo ""
+    echo "⚠️  코드 변경이 있는데 버전이 그대로입니다 ($LOCAL_VERSION)"
+    echo "   버전 bump가 필요하면: plugin.json + package.json 의 version 수정"
+    echo "   의도적이면 그대로 진행됩니다 (10초 대기)"
+    echo ""
+    sleep 10
+  fi
+fi
+
 if [ "${SKIP_TEST:-0}" = "1" ]; then
   echo "⏭️  SKIP_TEST=1 — 통합 테스트 건너뜀"
   exit 0
