@@ -47,10 +47,10 @@ command -v uv
 
 | 도구 | 체크 명령 | 설치 명령 |
 |------|----------|----------|
-| `notebooklm-py` | `command -v notebooklm` | `uv tool install notebooklm-py --with playwright` |
-| `node` | `command -v node` | `brew install node` |
-| `gh` | `command -v gh` | `brew install gh` |
-| `graphify` | `command -v graphify` | `uv tool install graphifyy --python 3.13 && graphify install` |
+| `notebooklm-py` | `command -v notebooklm` | `uv tool install --upgrade notebooklm-py --with playwright` |
+| `node` | `command -v node` | `brew upgrade node 2>/dev/null \|\| brew install node` |
+| `gh` | `command -v gh` | `brew upgrade gh 2>/dev/null \|\| brew install gh` |
+| `graphify` | `command -v graphify` | `uv tool install --upgrade graphifyy --python 3.13 && graphify install` |
 
 > **graphify 패키지명 주의**: PyPI 패키지명은 `graphifyy` (오타 아님, y가 두 개), 설치 후 명령어는 `graphify` (y 한 개).
 > **graphify install**: CLI 설치 후 `graphify install`을 실행하면 글로벌 스킬(`~/.claude/skills/graphify/SKILL.md`)이 등록되어 `/graphify` 명령으로 어디서든 사용 가능. 이미 설치돼 있으면 덮어쓰기(안전).
@@ -60,13 +60,15 @@ command -v uv
 ```
 [필수]
   uv               ✓
-  notebooklm-py    ✗   uv tool install notebooklm-py --with playwright
+  notebooklm-py    ✓ (v1.2.3 → 최신 확인)
   node             ✓
-  gh               ✗   brew install gh
-  graphify         ✗   uv tool install graphifyy --python 3.13
+  gh               ✓
+  graphify         ✗   uv tool install --upgrade graphifyy --python 3.13
 ```
 
 모든 항목이 ✓이면 단계 3을 건너뛰고 단계 6으로 가세요. ("이미 모두 설치되어 있습니다" 출력 + 마커 생성)
+
+> **재실행 시 업데이트**: `/rakis:setup`을 재실행하면 이미 설치된 도구도 최신 버전으로 업그레이드합니다 (`--upgrade` 플래그). 새 맥 첫 설치뿐 아니라 기존 환경 업데이트에도 사용 가능.
 
 ## 단계 3: 사용자 선택
 
