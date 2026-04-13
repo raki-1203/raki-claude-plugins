@@ -50,9 +50,10 @@ command -v uv
 | `notebooklm-py` | `command -v notebooklm` | `uv tool install notebooklm-py --with playwright` |
 | `node` | `command -v node` | `brew install node` |
 | `gh` | `command -v gh` | `brew install gh` |
-| `graphify` | `command -v graphify` | `uv tool install graphifyy --python 3.13` |
+| `graphify` | `command -v graphify` | `uv tool install graphifyy --python 3.13 && graphify install` |
 
 > **graphify 패키지명 주의**: PyPI 패키지명은 `graphifyy` (오타 아님, y가 두 개), 설치 후 명령어는 `graphify` (y 한 개).
+> **graphify install**: CLI 설치 후 `graphify install`을 실행하면 글로벌 스킬(`~/.claude/skills/graphify/SKILL.md`)이 등록되어 `/graphify` 명령으로 어디서든 사용 가능. 이미 설치돼 있으면 덮어쓰기(안전).
 
 결과를 다음 형식으로 출력하세요:
 

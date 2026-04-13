@@ -21,7 +21,7 @@
 | 새 지식을 위키에 저장 | `rakis:wiki-ingest` |
 | 세션 마무리 시 학습 기록 | `rakis:wiki-wrap-up` |
 | 위키 건강 점검 (주 1회) | `rakis:wiki-lint` |
-| 프로젝트 코드 구조 분석 | `rakis:project-graph` |
+| 프로젝트 코드 구조 분석 | `/graphify` (graphify 자체 스킬, setup에서 자동 설치) |
 | 플러그인 의존성 설치 (최초 1회) | `rakis:setup` |
 
 ### Wrap-up → Wiki 규칙

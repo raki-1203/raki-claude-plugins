@@ -6,7 +6,7 @@
 #   ./test.sh              # 전체 테스트
 #   ./test.sh source       # source-analyze만
 #   ./test.sh wiki         # wiki 스킬만
-#   ./test.sh graph        # project-graph만
+#   ./test.sh graphify     # graphify CLI만
 #   ./test.sh deps         # 의존성 확인만
 
 set -euo pipefail
@@ -258,10 +258,10 @@ test_wiki() {
   echo ""
 }
 
-# ─── project-graph 테스트 ───
+# ─── graphify CLI 테스트 ───
 
-test_graph() {
-  echo "🔬 project-graph 스킬 테스트"
+test_graphify() {
+  echo "🔬 graphify CLI 테스트"
 
   if ! command -v graphify &>/dev/null; then
     skip "graphify 미설치 — 전체 건너뜀"
@@ -309,7 +309,7 @@ case "$TARGET" in
     test_deps
     test_source_analyze
     test_wiki
-    test_graph
+    test_graphify
     ;;
   deps)
     test_deps
@@ -321,11 +321,11 @@ case "$TARGET" in
   wiki)
     test_wiki
     ;;
-  graph)
-    test_graph
+  graphify)
+    test_graphify
     ;;
   *)
-    echo "Usage: ./test.sh [all|deps|source|wiki|graph]"
+    echo "Usage: ./test.sh [all|deps|source|wiki|graphify]"
     exit 1
     ;;
 esac
