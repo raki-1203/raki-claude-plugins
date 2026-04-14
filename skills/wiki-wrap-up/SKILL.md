@@ -1,7 +1,7 @@
 ---
 name: wiki-wrap-up
 description: "세션 마무리 시 학습/발견을 Obsidian Wiki에 저장. 세션 끝내기 전 '/wiki-wrap-up' 실행. 이 세션에서 새로 알게 된 것, 해결한 문제, 발견한 패턴을 추출하여 위키에 기록한다."
-argument-hint: "[주제 힌트 (선택)]
+argument-hint: "[주제 힌트 (선택)]"
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 ---
 
