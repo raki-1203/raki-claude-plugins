@@ -86,6 +86,7 @@ description: 한 줄 요약
 4. 새 사람/조직이 발견되면 → `wiki/entities/`에 새 페이지
 5. 비교 분석이 필요하면 → `wiki/comparisons/`에 새 페이지
 6. 프로젝트 고유 지식이면 → `wiki/projects/`에 새 페이지 (아키텍처 결정, 상태, 이슈 등)
+7. 기존 페이지에 `comment` 필드가 없으면 Step 0에서 수집한 코멘트로 보완. 이미 있으면 기존 값 유지 (덮어쓰지 않음).
 
 **하나의 source가 10-15개 기존 페이지에 영향을 줄 수 있다.**
 
@@ -119,7 +120,7 @@ graphify "${VAULT_PATH}" --update
 ```
 
 - graph.json이 없으면 graphify가 자동으로 풀 빌드로 전환 (graphify 자체 동작)
-- 실행 출력은 요약해서 사용자에게 보고 (예: "그래프: 3개 노드 추가, 5개 엣지 업데이트")
+- graphify 명령의 stdout을 한 줄로 요약해서 사용자에게 보고 (구체적 포맷은 graphify 출력에 의존)
 - 실패해도 ingest는 성공으로 간주 (그래프는 다음 wiki-lint에서 복구)
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
