@@ -116,7 +116,7 @@ command -v graphify
 ```
 
 - 성공 → 업데이트 실행
-- 실패 → 건너뜀 (경고 없이)
+- 실패 → 건너뜀 (경고 없이 조용히)
 
 **실행:**
 ```bash
@@ -126,6 +126,8 @@ graphify "${VAULT_PATH}" --update
 - graph.json 없으면 graphify가 풀 빌드로 자동 전환
 - graphify 명령의 stdout을 한 줄로 요약해서 Step 6 완료 보고에 포함
 - 실패해도 wrap-up 자체는 성공 (그래프는 다음 lint에서 복구)
+
+**`${VAULT_PATH}`**: "## Vault 경로" 섹션의 경로 (또는 `OBSIDIAN_VAULT_PATH` 환경변수).
 
 ### 6. 완료 보고
 
