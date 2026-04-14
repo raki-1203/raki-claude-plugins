@@ -35,6 +35,20 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 - 예: "CLAUDE.md는 50줄 이하가 효과적"
 - 예: "SDD + TDD 조합이 가장 강력"
 
+**추가 추출: 각 항목의 "왜" (코멘트)**
+
+각 항목에 대해 세션 대화 맥락에서 **왜 이것이 저장 가치가 있는지** 한 줄로 자동 추출한다. 이것은 나중에 frontmatter의 `comment` 필드로 저장된다.
+
+예시:
+- OpenClaw: `"jobdori 분석 중 원류 프레임워크로 등장, 별도 페이지 필요"`
+- iCloud vault 경로: `"vault 접근 시도 중 iCloud 경로 특이성 발견"`
+- OMC 제거 결정: `"실제 사용 안 함 확인, CLAUDE.md 간소화 목적"`
+
+추출 기준:
+- 세션에서 해당 주제가 **언제/왜 등장했는지**
+- 작업의 어떤 문맥에서 유용했는지
+- 사용자가 명시적으로 언급하지 않았어도 대화 흐름에서 유추 가능
+
 ### 2. 필터링
 
 다음은 **저장하지 않는다:**
@@ -45,36 +59,75 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 
 ### 3. 사용자 확인
 
-추출 결과를 보여주고 승인을 받는다:
+추출 결과를 보여주고 승인을 받는다. 각 항목에 자동 생성된 comment도 함께 표시:
 
 ```
 ## 이 세션에서 위키에 저장할 내용
 
 ### 새로운 개념 (N건)
-- **OpenClaw**: 오픈소스 AI 에이전트 프레임워크 → wiki/concepts/에 저장
-- **clawhip**: Claude Code ↔ OpenClaw 이벤트 브릿지 → wiki/concepts/에 저장
+- **OpenClaw**: 오픈소스 AI 에이전트 프레임워크
+  comment: "jobdori 분석 중 원류 프레임워크로 등장"
+  → wiki/concepts/에 저장
+
+- **clawhip**: Claude Code ↔ OpenClaw 이벤트 브릿지
+  comment: "OpenClaw 알림 구조 조사 중 발견"
+  → wiki/concepts/에 저장
 
 ### 트러블슈팅 (N건)
-- **iCloud vault 경로**: ~/Library/Mobile Documents/... → 기존 페이지에 추가
+- **iCloud vault 경로**: ~/Library/Mobile Documents/...
+  comment: "vault 접근 시 iCloud 경로 특이성"
+  → 기존 페이지에 추가
 
 ### 결정 기록 (N건)
-- **OMC 제거**: 실제로 안 쓰고 있어서 CLAUDE.md에서 삭제 → log.md에 기록
+- **OMC 제거**: 실제로 안 쓰고 있어서 CLAUDE.md에서 삭제
+  comment: "실사용 검증 후 CLAUDE.md 간소화"
+  → log.md에 기록
 
-저장할까요? (전체/선택/취소)
+저장할까요?
+[전체] 그대로 저장
+[선택] 항목별 선택
+[수정] 코멘트 수정 후 저장
+[취소] 저장하지 않음
 ```
+
+**[수정] 선택 시**: 각 항목에 대해 "이 코멘트로 할까요? (Enter = 그대로, 수정할 내용 입력)" 순차 질문. 사용자 입력을 해당 항목의 comment로 대체.
 
 ### 4. 위키 저장 실행
 
 승인된 항목에 대해:
 
 1. **새 개념/엔티티** → `wiki/concepts/` 또는 `wiki/entities/`에 새 페이지 생성
-   - YAML frontmatter 포함 (title, type, sources, related, created, updated, confidence, description)
+   - YAML frontmatter 포함 (title, type, sources, `comment`, related, created, updated, confidence, description)
+   - `comment`: Step 1에서 자동 추출된 값 또는 Step 3에서 사용자가 수정한 값
 2. **기존 페이지 보강** → 해당 페이지의 내용 업데이트, `updated:` 갱신
+   - 기존 페이지에 `comment` 필드가 없으면 자동 추가 (이 세션에서 추출된 값으로)
+   - 이미 `comment`가 있으면 덮어쓰지 않고 기존 값 유지
 3. **트러블슈팅/패턴** → 관련 개념 페이지에 섹션 추가, 또는 새 페이지 생성
 4. **결정 기록** → `log.md`에 추가
 5. **`index.md` 갱신** — 새 페이지가 있으면 적절한 섹션에 추가
 
-### 5. 완료 보고
+### 5. 그래프 증분 업데이트
+
+Step 4의 저장이 끝나면 vault 그래프를 증분 업데이트한다.
+
+**조건 체크:**
+```bash
+command -v graphify
+```
+
+- 성공 → 업데이트 실행
+- 실패 → 건너뜀 (경고 없이)
+
+**실행:**
+```bash
+graphify "${VAULT_PATH}" --update
+```
+
+- graph.json 없으면 graphify가 풀 빌드로 자동 전환
+- graphify 명령의 stdout을 한 줄로 요약해서 Step 6 완료 보고에 포함
+- 실패해도 wrap-up 자체는 성공 (그래프는 다음 lint에서 복구)
+
+### 6. 완료 보고
 
 ```
 ## Wiki Wrap-up 완료
@@ -82,6 +135,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 - 새 페이지: 2건 (openclaw.md, clawhip.md)
 - 업데이트: 1건 (claude-code.md)
 - 로그 기록: 1건
+- 그래프: 증분 업데이트 완료 (자세한 건 graphify 출력 참조)
 
 다음 세션에서 "~에 대해 정리된 거 있어?"로 찾을 수 있습니다.
 ```
