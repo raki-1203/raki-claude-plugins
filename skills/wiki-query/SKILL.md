@@ -47,7 +47,7 @@ license: MIT
 |------|----------|----------|
 | 프로젝트명 | 작업 디렉토리 basename 또는 package.json의 `name` | 1줄 |
 | 기술 스택 | `package.json` / `pyproject.toml` / `Cargo.toml` 의 의존성 이름만 (버전 제외) | 20줄 |
-| CLAUDE.md 요약 | CLAUDE.md가 있으면 헤더 + 첫 섹션만, 또는 300자 이내 요약 | 20줄 |
+| CLAUDE.md 요약 | CLAUDE.md가 있으면 헤더 + 첫 섹션만 (전체 300자 초과 시 300자로 절단) | 20줄 |
 | 최근 커밋 | `git log --oneline -10` (git repo인 경우만) | 10줄 |
 | 프로젝트 위키 페이지 | `wiki/projects/{프로젝트명}.md`가 있으면 frontmatter의 description만 | 3줄 |
 
@@ -63,7 +63,7 @@ command -v graphify && [ -f "${VAULT_PATH}/graph.json" ]
 ```
 
 - 둘 다 성공 → graphify query 실행
-- 실패 → 폴백 (index.md 전체 스캔 + 프로젝트 컨텍스트로 필터링)
+- 실패 → 폴백: index.md를 전체 읽고 프로젝트 컨텍스트로 필터링하여 관련 페이지 목록 생성. 1-A-3의 동일한 3-카테고리 포맷(직접/간접/잠재)으로 출력하되, 분류 근거는 컨텍스트 매칭도에 기반.
 
 **실행:**
 ```bash
@@ -74,6 +74,8 @@ ${CONTEXT}
 ```
 
 여기서 `${CONTEXT}`는 1-A-1에서 수집한 압축 컨텍스트.
+
+**`${VAULT_PATH}`**: "## Vault 경로 탐지" 섹션의 결과 경로.
 
 #### 1-A-3. 결과 프레젠테이션 (지연 로딩)
 
@@ -103,8 +105,6 @@ graphify query 결과를 **페이지 목록만** 출력. 내용은 읽지 않음
 - "전체 읽어줘" → 모든 페이지 Read → Step 3 답변 합성으로 진행
 - "N번만" → 해당 페이지만 Read → 해당 페이지 중심으로 답변
 - "끝내" → 여기서 종료
-
-**`${VAULT_PATH}`**: "## Vault 경로 탐지" 섹션의 결과 경로.
 
 ### 1. index.md 읽기
 
