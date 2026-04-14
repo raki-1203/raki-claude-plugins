@@ -9,6 +9,13 @@ license: MIT
 
 URL, 파일, 텍스트 등 다양한 소스를 NotebookLM을 핵심 엔진으로 분석하고, 결과를 Obsidian 위키에 저장한다.
 
+## Vault 경로 탐지
+
+아래 순서로 Vault 경로를 결정:
+1. 환경변수 `OBSIDIAN_VAULT_PATH`가 있으면 사용
+2. `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault` (iCloud)
+3. Vault 내 `CLAUDE.md`에 "Three-Layer" 또는 "raw/" 언급이 있는지 확인하여 검증
+
 ## 파이프라인 개요
 
 ```
@@ -157,7 +164,7 @@ sources:
   - "[[raw/...]]"
 comment: "Phase 0에서 수집한 사용자 코멘트 — 왜 분석했는지"
 related:
-  - [...]
+  - "[[관련-위키-페이지]]"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 confidence: high | medium | low
