@@ -109,26 +109,15 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 4. **결정 기록** → `log.md`에 추가
 5. **`index.md` 갱신** — 새 페이지가 있으면 적절한 섹션에 추가
 
-### 5. 그래프 증분 업데이트
+### 5. 그래프 업데이트 안내
 
-Step 4에서 **실제로 저장된 항목이 있을 때만** 실행한다. Step 3에서 사용자가 [취소]를 선택했거나 승인된 항목이 0건이면 이 단계를 건너뛰고 Step 6으로 직행.
+Step 4에서 **실제로 저장된 항목이 있을 때만** 안내한다. Step 3에서 사용자가 [취소]를 선택했거나 승인된 항목이 0건이면 안내도 생략하고 Step 6으로 직행.
 
-**조건 체크:**
-```bash
-command -v graphify
-```
+graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH> --update` 형태로 사용자가 직접 invoke해야 갱신된다. bash 실행 불가.
 
-- 성공 → 업데이트 실행
-- 실패 → 건너뜀 (경고 없이 조용히)
-
-**실행:**
-```bash
-graphify "${VAULT_PATH}" --update
-```
-
-- graph.json 없으면 graphify가 풀 빌드로 자동 전환
-- graphify 명령의 stdout을 한 줄로 요약해서 Step 6 완료 보고에 포함
-- 실패해도 wrap-up 자체는 성공 (그래프는 다음 lint에서 복구)
+**조건 체크 (`command -v graphify`):**
+- 성공 → Step 6 완료 보고에 한 줄 안내 포함
+- 실패 → 조용히 생략
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
@@ -140,7 +129,9 @@ graphify "${VAULT_PATH}" --update
 - 새 페이지: 2건 (openclaw.md, clawhip.md)
 - 업데이트: 1건 (claude-code.md)
 - 로그 기록: 1건
-- 그래프: 증분 업데이트 완료 (자세한 건 graphify 출력 참조)
+
+그래프 증분 업데이트 권장:
+  /graphify "${VAULT_PATH}" --update
 
 다음 세션에서 "~에 대해 정리된 거 있어?"로 찾을 수 있습니다.
 ```

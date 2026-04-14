@@ -19,10 +19,10 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 | Skill | Trigger | What it does |
 |-------|---------|-------------|
 | `wiki-query` | "~에 대해 정리된 거 있어?", "이 프로젝트 관련 뭐 있어?" | 답변형/탐색형 자동 분기. graphify query 연동 |
-| `wiki-ingest` | "저장해줘", "정리해줘" | 자료 수집. 코멘트 강제 + 그래프 증분 업데이트 |
+| `wiki-ingest` | "저장해줘", "정리해줘" | 자료 수집. 코멘트 강제 + 그래프 업데이트 안내 (`/graphify --update` 수동) |
 | `source-analyze` | "분석해줘", "비교해줘" | NotebookLM 기반 심층 분석 + 코멘트 강제 |
 | `wiki-wrap-up` | `/wiki-wrap-up` | 세션 학습 자동 추출 + 코멘트 자동 생성 |
-| `wiki-lint` | "위키 점검해줘", 주 1회 | 건강 점검 + graphify 풀 리빌드 |
+| `wiki-lint` | "위키 점검해줘", 주 1회 | 건강 점검 + 그래프 풀 리빌드 안내 (`/graphify` 수동) |
 | `wiki-init` | `/wiki-init`, "위키 초기화" | vault 인터뷰 기반 초기 세팅 |
 
 #### Commands

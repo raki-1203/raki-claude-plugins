@@ -102,28 +102,20 @@ description: 한 줄 요약
 ## [YYYY-MM-DD] page-name | 작업 설명
 ```
 
-### 6. 그래프 증분 업데이트
+### 6. 그래프 업데이트 안내
 
-모든 저장 단계가 끝나면 vault 그래프를 증분 업데이트한다.
+저장 완료 후, 사용자에게 그래프 증분 업데이트를 안내한다 (자동 실행 안 함).
 
-**조건 체크:**
-```bash
-command -v graphify
-```
+graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH> --update` 형태로 사용자가 직접 invoke해야 그래프가 갱신된다. bash 호출로는 실행되지 않으니 주의.
 
-- 성공 → 업데이트 실행
-- 실패 → 건너뜀 (경고 없이 조용히)
-
-**실행:**
-```bash
-graphify "${VAULT_PATH}" --update
-```
-
-- graph.json이 없으면 graphify가 자동으로 풀 빌드로 전환 (graphify 자체 동작)
-- graphify 명령의 stdout을 한 줄로 요약해서 사용자에게 보고 (구체적 포맷은 graphify 출력에 의존)
-- 실패해도 ingest는 성공으로 간주 (그래프는 다음 wiki-lint에서 복구)
+**조건 체크 (`command -v graphify`):**
+- 성공 → 완료 보고 끝에 한 줄 안내 출력:
+  > "그래프 증분 업데이트: `/graphify \"${VAULT_PATH}\" --update` 실행 권장 (wiki-query 탐색형/심층 질의에 반영됩니다)"
+- 실패 → 조용히 생략
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
+
+그래프 정합성은 주 1회 `/wiki-lint` 실행 시 자동으로 제안되는 풀 리빌드로 복구된다.
 
 ## 페이지 유형별 폴더
 

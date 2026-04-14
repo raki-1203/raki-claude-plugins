@@ -237,27 +237,19 @@ cat > "${VAULT_PATH}/CLAUDE.md" <<EOF
 EOF
 ```
 
-### 5. 초기 graphify 빌드
+### 5. 초기 graphify 빌드 안내
 
-```bash
-command -v graphify
-```
-
-- 성공 + vault에 페이지가 1개 이상 → 풀 빌드 실행
-- 성공 + vault가 비어있음 → 건너뜀, "첫 wiki-ingest 후 자동 빌드됩니다" 안내
-- 실패 → 건너뜀, "graphify 미설치. /rakis:setup 권장" 안내
+graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH>` 형태로 사용자가 직접 invoke해야 한다. bash 실행 불가.
 
 **빈 vault 체크:**
 ```bash
 find "${VAULT_PATH}/wiki" -name '*.md' -not -name '.gitkeep' | head -1
 ```
 
-출력이 있으면 페이지 존재 → 빌드.
-
-**실행:**
-```bash
-cd "${VAULT_PATH}" && graphify "${VAULT_PATH}"
-```
+**안내 분기:**
+- 빈 vault → Step 6 리포트에서 "첫 자료 수집 후 `/graphify` 실행하세요"
+- 페이지 있음 + graphify 설치됨 (`command -v graphify` 성공) → Step 6 리포트에서 "`/graphify \"${VAULT_PATH}\"` 실행 권장"
+- graphify 미설치 → Step 6 리포트에서 "`/rakis:setup`으로 graphify 설치 후 `/graphify` 실행"
 
 ### 6. 완료 리포트
 
@@ -267,14 +259,15 @@ cd "${VAULT_PATH}" && graphify "${VAULT_PATH}"
 vault: ${VAULT_PATH}
 생성된 구조: 5 raw/ + 5 wiki/ 하위폴더
 CLAUDE.md: 생성됨 (사용자 프로필 + 규칙)
-graphify 초기 빌드: <완료 | 스킵 (빈 vault) | 스킵 (미설치)>
 
 다음 단계:
   1. 환경변수 설정 (선택):
      export OBSIDIAN_VAULT_PATH="${VAULT_PATH}"
   2. 첫 자료 수집:
      /source-analyze <URL> "왜 분석하는지"
-  3. 질의:
+  3. 그래프 빌드 (자료가 쌓인 후):
+     /graphify "${VAULT_PATH}"
+  4. 질의:
      "~ 정리된 거 있어?"
 ```
 

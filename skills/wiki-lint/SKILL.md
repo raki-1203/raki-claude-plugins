@@ -105,27 +105,17 @@ frontmatter가 불완전한 페이지:
 - `index.md` 갱신
 - `log.md`에 린트 실행 기록: `## [YYYY-MM-DD] lint | 위키 린트 N건 수정`
 
-### 5. 그래프 풀 리빌드
+### 5. 그래프 풀 리빌드 안내
 
-Step 4 수정이 모두 끝나면 vault 그래프를 **풀 리빌드**한다. lint는 주 1회 수행되므로 정합성 보장을 위해 증분이 아닌 풀 빌드.
+Step 4 수정이 모두 끝나면 사용자에게 풀 리빌드를 안내한다. graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH>` 형태로 사용자가 직접 invoke해야 한다. bash 실행 불가.
 
-**조건 체크:**
-```bash
-command -v graphify
-```
+lint는 주 1회 수행되므로 이 시점에 풀 빌드(`--update` 없이)를 권장해 정합성을 복구한다.
 
-- 성공 → 풀 빌드 실행
-- 실패 → 건너뜀 + 사용자에게 1회 안내: "graphify 미설치로 그래프 리빌드 건너뜀. `/rakis:setup` 실행 권장."
+**조건 체크 (`command -v graphify`):**
+- 성공 → Step 4 보고 끝에 안내 포함
+- 실패 → "`/rakis:setup` 실행 권장 (graphify 미설치)" 안내
 
-**실행:**
-```bash
-graphify "${VAULT_PATH}"
-```
-
-(`--update` 플래그 없음 = 풀 빌드)
-
-**실행 결과 보고:**
-Step 4의 "수정 실행 보고" 끝에 그래프 리빌드 결과 요약 추가:
+**보고 예시:**
 
 ```
 ## 위키 린트 완료 (YYYY-MM-DD)
@@ -135,12 +125,9 @@ Step 4의 "수정 실행 보고" 끝에 그래프 리빌드 결과 요약 추가
   - 링크 보강: N
   - comment 보완: N
 
-그래프 리빌드: 완료 (graphify stdout 한 줄 요약)
+그래프 풀 리빌드 권장 (주 1회 정합성 복구):
+  /graphify "${VAULT_PATH}"
 ```
-
-**실패 처리:**
-- graphify 실행 실패 시 lint 자체는 성공으로 처리
-- 실패 메시지만 보고: "그래프 리빌드 실패 — 다음 lint에서 재시도"
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 

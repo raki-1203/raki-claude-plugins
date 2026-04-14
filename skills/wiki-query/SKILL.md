@@ -148,7 +148,7 @@ cd "${VAULT_PATH}" && graphify query "질문 내용"
 
 graphify query 결과를 Step 3의 답변 합성에 추가 자료로 활용.
 
-graph.json이 없으면 건너뛰되, 응답 끝에 한 줄 안내 추가: "`/wiki-lint` 실행 후 재질의하면 그래프 기반 심층 답변 가능."
+graph.json이 없으면 건너뛰되, 응답 끝에 한 줄 안내 추가: "`/graphify \"${VAULT_PATH}\"` 실행 후 재질의하면 그래프 기반 심층 답변 가능."
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
