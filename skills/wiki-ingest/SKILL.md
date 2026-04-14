@@ -18,6 +18,27 @@ Karpathy의 LLM Knowledge Base 방법론 기반. 새 자료를 3-Layer Vault에 
 
 ## 절차
 
+### 0. 코멘트 수집 (Gold In, Gold Out)
+
+"왜 저장하는지" 목적을 반드시 기록한다. 이 코멘트는 wiki/ 페이지 frontmatter의 `comment` 필드로 저장되어 나중에 맥락 파악/역검색에 사용된다.
+
+**입력 방식:**
+- 인자로 전달: `/wiki-ingest <자료> "왜 저장하는지"`
+- 인자 없으면 질문:
+  ```
+  왜 이 자료를 저장하시나요? (한 줄, 한국어 권장)
+  > _____
+  ```
+- 사용자가 답할 때까지 대기 (빈 답변 거부)
+
+**형식:**
+- 1-2 문장, 한국어
+- 예시:
+  - `"jobdori 분석 중 원류 프레임워크로 등장"`
+  - `"프로젝트 X 상태 관리 조사 중 발견, riverpod 비교 대상"`
+
+수집된 코멘트를 변수로 보관하여 Step 2의 frontmatter 생성과 이후 기존 페이지 업데이트에 사용한다.
+
 ### 1. 원본 저장 (raw/) — Immutable
 
 소스 유형에 따라 적절한 하위 폴더에 저장. **한 번 저장하면 절대 수정하지 않는다.**
@@ -43,6 +64,7 @@ title: Source Title
 type: source-summary
 sources:
   - "[[raw/articles/source-file]]"
+comment: "Step 0에서 수집한 사용자 코멘트 — 왜 저장했는지"
 related:
   - "[[관련-위키-페이지]]"
 created: YYYY-MM-DD
@@ -51,6 +73,8 @@ confidence: high | medium | low
 description: 한 줄 요약
 ---
 ```
+
+**`comment` 필드**: Step 0에서 수집한 사용자 코멘트를 그대로 기록. 1-2 문장, 한국어. 나중에 wiki-query의 역검색 대상이 된다.
 
 핵심 내용을 구조화하여 요약. 원문 인용은 `>` 블록쿼트 사용.
 
@@ -76,6 +100,29 @@ description: 한 줄 요약
 ```
 ## [YYYY-MM-DD] page-name | 작업 설명
 ```
+
+### 6. 그래프 증분 업데이트
+
+모든 저장 단계가 끝나면 vault 그래프를 증분 업데이트한다.
+
+**조건 체크:**
+```bash
+command -v graphify
+```
+
+- 성공 → 업데이트 실행
+- 실패 → 건너뜀 (경고 없이 조용히)
+
+**실행:**
+```bash
+graphify "${VAULT_PATH}" --update
+```
+
+- graph.json이 없으면 graphify가 자동으로 풀 빌드로 전환 (graphify 자체 동작)
+- 실행 출력은 요약해서 사용자에게 보고 (예: "그래프: 3개 노드 추가, 5개 엣지 업데이트")
+- 실패해도 ingest는 성공으로 간주 (그래프는 다음 wiki-lint에서 복구)
+
+**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 ## 페이지 유형별 폴더
 
