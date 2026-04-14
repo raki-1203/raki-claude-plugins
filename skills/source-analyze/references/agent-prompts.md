@@ -77,11 +77,16 @@ Agent(
 1. notebooklm create \"{owner}/{repo} 분석\"
    - 출력에서 노트북 ID를 파싱
 2. notebooklm use {notebook_id}
-3. notebooklm source add /tmp/repomix-{repo}.txt
-4. notebooklm source add \"https://github.com/{owner}/{repo}\"
+3. /tmp/repomix-{repo}.txt 크기 확인(wc -c). 크기별로 반드시 아래 분기를 따른다:
+   - **< 2MB**: notebooklm source add /tmp/repomix-{repo}.txt --title \"{repo} source\" 로 그대로 업로드.
+   - **2~10MB**: **먼저 compress 재생성을 시도한다** (건너뛰지 말 것) —
+     `npx -y repomix --remote {owner}/{repo} --compress --output /tmp/repomix-{repo}-compressed.txt`
+     → compressed 파일이 < 2MB면 그것만 업로드. 여전히 > 2MB면 아래 분할 단계로.
+   - **> 10MB 또는 compress 후에도 > 2MB**: references/notebooklm-guide.md 의 '====' 구분선 기반 Python 분할 스크립트를 그대로 복사해 실행한다. 바이트 기준 `split -b`는 금지(UTF-8 중간 잘림으로 400 거절됨). 생성된 각 파트(/tmp/repomix-{repo}-part-NN-of-MM.txt)를 notebooklm source add 로 개별 업로드한다. 파트 확장자는 반드시 원본과 동일(.txt 등)해야 한다.
+4. notebooklm source add \"https://github.com/{owner}/{repo}\" --title \"{repo} GitHub\"
+5. notebooklm source list 로 업로드 결과 확인.
 
-반환: 노트북 ID와 소스 업로드 결과.
-업로드 실패 시 에러 메시지를 그대로 반환하라."
+반환: 노트북 ID, 업로드된 소스 목록(source list 출력), 실행한 분기(원본/compress/분할). 업로드 실패 시 어느 파일에서 어떤 에러가 발생했는지 원문 그대로 반환."
 )
 ```
 

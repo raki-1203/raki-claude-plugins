@@ -70,25 +70,60 @@ npx repomix --remote {owner}/{repo} --compress --output /tmp/repomix-{repo}-comp
 
 **4단계: 파일 분할 업로드** (compress 후에도 > 2MB일 때)
 
-repomix 출력은 파일별로 `====` 구분선이 있다. 이 구분선을 기준으로 2MB 단위로 분할:
+repomix 출력은 파일마다 `====` 구분선이 있다. **반드시 이 구분선을 경계로 분할**해야 한다. `split -b` 같은 바이트 기준 분할은 UTF-8 멀티바이트 문자 중간이나 repomix 토큰 중간에서 잘려 업로드 시 400 Bad Request를 유발한다(특히 한글·중국어 등 비ASCII 포함 repo).
+
+**권장: `====` 구분선 기준 Python 분할 (primary)**
 
 ```bash
-# 분할 스크립트 (파일 경계에서 나눔)
-split -b 2m /tmp/repomix-{repo}.txt /tmp/repomix-{repo}-part-
-# 또는 Python으로 파일 구분선(====) 기준 분할
+uv run python3 - <<'PY' /tmp/repomix-{repo}.txt /tmp/repomix-{repo}-part-
+import pathlib, sys
+
+src = pathlib.Path(sys.argv[1])
+prefix = sys.argv[2]
+ext = src.suffix or ".txt"          # .txt (repomix 기본) 또는 .xml
+limit = 1_900_000                    # ~1.85MB (2MB 경계 여유)
+
+parts, buf, size = [], [], 0
+for line in src.read_text(encoding="utf-8").splitlines(keepends=True):
+    # 새 파일 경계이고 현재 파트가 충분히 크면 flush
+    if line.startswith("====") and size > limit and buf:
+        parts.append("".join(buf))
+        buf, size = [], 0
+    buf.append(line)
+    size += len(line.encode("utf-8"))
+if buf:
+    parts.append("".join(buf))
+
+for i, part in enumerate(parts):
+    out = pathlib.Path(f"{prefix}{i+1:02d}-of-{len(parts):02d}{ext}")
+    out.write_text(part, encoding="utf-8")
+    print(out)
+PY
 ```
 
-분할된 각 파트를 별도 소스로 업로드:
+생성 예: `/tmp/repomix-{repo}-part-01-of-05.txt` ~ `-05-of-05.txt`
+
+**각 파트 업로드**:
 ```bash
-notebooklm source add /tmp/repomix-{repo}-part-aa --title "{repo} (1/3)"
-notebooklm source add /tmp/repomix-{repo}-part-ab --title "{repo} (2/3)"
-notebooklm source add /tmp/repomix-{repo}-part-ac --title "{repo} (3/3)"
+for f in /tmp/repomix-{repo}-part-*.txt; do
+  notebooklm source add "$f" --title "{repo} $(basename "$f" .txt)"
+done
 ```
 
-**주의**: 
-- 원본 파일을 그대로 재업로드하는 것은 금지 — 더 큰 파일을 올리면 의미 없음
-- 분할 시 파일 중간에서 자르지 않고 repomix의 파일 구분선에서 나눔
-- 분할 실패 시에만 Claude fallback으로 전환
+**fallback (Python 실행 환경이 없을 때만)**:
+```bash
+# split -b 는 UTF-8 중간 잘림 위험. 비ASCII 포함 repo에는 쓰지 말 것.
+SRC=/tmp/repomix-{repo}.txt
+EXT="${SRC##*.}"
+split -b 1900k "$SRC" "/tmp/repomix-{repo}-part-" --additional-suffix=".$EXT"
+```
+
+**주의**:
+- **분할 파트 확장자는 원본(repomix 출력) 확장자를 그대로 유지.** 확장자가 없거나 바뀌면 NotebookLM이 MIME 판별에 실패해 400 Bad Request로 거절한다 (2026-04-14 실발생).
+- **`====` 기준 분할이 primary, 바이트 기준 split은 fallback.** 바이트 분할은 UTF-8 멀티바이트 경계를 깰 수 있다.
+- 경계값 2MB는 근접하면 거절될 수 있어 1900k(약 1.85MB)로 여유를 둔다.
+- 원본 파일을 그대로 재업로드하는 것은 금지 — 더 큰 파일을 올리면 의미 없음.
+- 분할 실패 시에만 Claude fallback으로 전환.
 
 ## 질의
 
