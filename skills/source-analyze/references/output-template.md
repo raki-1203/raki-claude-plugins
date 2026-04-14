@@ -109,6 +109,7 @@ type: source-summary
 sources:
   - "[[raw/repos/{repo명}/metadata]]"
   - "[[raw/repos/{repo명}/analysis]]"
+comment: "왜 분석했는지 — Phase 0에서 수집한 코멘트"
 related:
   - "[[관련-위키-페이지]]"
 created: YYYY-MM-DD

@@ -24,6 +24,33 @@ URL, 파일, 텍스트 등 다양한 소스를 NotebookLM을 핵심 엔진으로
 
 ## Phase 0: 소스 유형 감지 + 전처리
 
+### 코멘트 수집 (Gold In, Gold Out) — 유형 감지 전
+
+"왜 분석하는지" 목적을 반드시 기록한다. 이 코멘트는 wiki/sources/ 페이지 frontmatter의 `comment` 필드로 저장되어 나중에 맥락 파악/역검색에 사용된다.
+
+**입력 방식:**
+- 인자로 전달: `/source-analyze https://... "왜 분석하는지"`
+- 인자 없으면 질문:
+  ```
+  왜 이 소스를 분석하시나요? (한 줄, 한국어 권장)
+  > _____
+  ```
+- 사용자가 답할 때까지 대기 (빈 답변 거부)
+
+**멀티 소스 모드:**
+여러 소스가 주어지거나 "비교해줘" 키워드가 있으면 코멘트도 공통 하나만 받는다:
+  ```
+  이 소스들을 왜 비교/분석하시나요?
+  ```
+
+**형식:**
+- 1-2 문장, 한국어
+- 예시:
+  - `"jobdori 분석 중 원류 프레임워크로 등장"`
+  - `"langchain agent harness 시리즈와 비교하려고"`
+
+수집된 코멘트는 Phase 6의 frontmatter 생성에 사용된다.
+
 ### 소스 유형 자동 감지
 
 입력을 분석하여 유형을 판별하고, 유형별 전처리를 수행한다.
@@ -119,6 +146,27 @@ Phase 4: Haiku 3개가 리포트/마인드맵/요약 병렬 생성
 
 ## Phase 6: Obsidian 저장
 
+**frontmatter 필수 필드:**
+모든 wiki/ 페이지(sources/, comparisons/) frontmatter에 다음 필드를 포함한다:
+
+```yaml
+---
+title: ...
+type: source-summary | comparison
+sources:
+  - "[[raw/...]]"
+comment: "Phase 0에서 수집한 사용자 코멘트 — 왜 분석했는지"
+related:
+  - [...]
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+confidence: high | medium | low
+description: ...
+---
+```
+
+**`comment` 필드**: Phase 0에서 수집한 사용자 코멘트를 그대로 기록. 멀티 소스 모드에서는 공통 코멘트 하나를 모든 페이지에 동일하게 기록한다.
+
 > **저장 구조**: `references/output-template.md` 참조.
 
 | 유형 | raw/ 저장 | wiki/ 저장 |
@@ -126,6 +174,29 @@ Phase 4: Haiku 3개가 리포트/마인드맵/요약 병렬 생성
 | GitHub repo | `raw/repos/{repo}/` (metadata, analysis, repomix 캐시) | `wiki/sources/{repo}.md` |
 | 웹/문서/기타 | `raw/articles/{소스명}.md` (원문 또는 추출 텍스트) | `wiki/sources/{소스명}.md` |
 | 비교 분석 | — | `wiki/comparisons/{A}-vs-{B}.md` |
+
+## Phase 7: 그래프 증분 업데이트
+
+Phase 6 저장이 끝나면 vault 그래프를 증분 업데이트한다.
+
+**조건 체크:**
+```bash
+command -v graphify
+```
+
+- 성공 → 업데이트 실행
+- 실패 → 건너뜀 (경고 없이 조용히)
+
+**실행:**
+```bash
+graphify "${VAULT_PATH}" --update
+```
+
+- graph.json이 없으면 graphify가 자동으로 풀 빌드로 전환
+- graphify 명령의 stdout을 한 줄로 요약해서 사용자에게 보고 (구체적 포맷은 graphify 출력에 의존)
+- 실패해도 분석은 성공으로 간주
+
+`${VAULT_PATH}`: "Vault 경로 탐지" 또는 `OBSIDIAN_VAULT_PATH` 환경변수로 결정된 경로.
 
 ## 확장 분석 (사용자 요청 시)
 
