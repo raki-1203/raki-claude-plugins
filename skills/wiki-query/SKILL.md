@@ -14,6 +14,7 @@ license: MIT
 아래 순서로 Vault 경로를 결정:
 1. 환경변수 `OBSIDIAN_VAULT_PATH`가 있으면 사용
 2. `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault` (iCloud)
+3. Vault 내 `CLAUDE.md`에 "Three-Layer" 또는 "raw/" 언급이 있는지 확인하여 검증
 
 ## 절차
 
@@ -75,7 +76,7 @@ ${CONTEXT}
 
 여기서 `${CONTEXT}`는 1-A-1에서 수집한 압축 컨텍스트.
 
-**`${VAULT_PATH}`**: "## Vault 경로 탐지" 섹션의 결과 경로.
+**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 #### 1-A-3. 결과 프레젠테이션 (지연 로딩)
 
@@ -102,8 +103,8 @@ graphify query 결과를 **페이지 목록만** 출력. 내용은 읽지 않음
 ```
 
 **사용자 후속 입력에 따라:**
-- "전체 읽어줘" → 모든 페이지 Read → Step 3 답변 합성으로 진행
-- "N번만" → 해당 페이지만 Read → 해당 페이지 중심으로 답변
+- "전체 읽어줘" → 모든 페이지 Read → Step 3 답변 합성으로 **직행** (Step 1, 2 생략 — graphify 중복 호출 방지)
+- "N번만" → 해당 페이지만 Read → Step 3 답변 합성으로 **직행** (Step 1, 2 생략)
 - "끝내" → 여기서 종료
 
 ### 1. index.md 읽기
@@ -149,7 +150,7 @@ graphify query 결과를 Step 3의 답변 합성에 추가 자료로 활용.
 
 graph.json이 없으면 건너뛰되, 응답 끝에 한 줄 안내 추가: "`/wiki-lint` 실행 후 재질의하면 그래프 기반 심층 답변 가능."
 
-**`${VAULT_PATH}`**: "## Vault 경로 탐지" 섹션의 결과 경로.
+**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 ### 3. 답변 합성
 

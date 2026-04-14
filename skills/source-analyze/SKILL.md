@@ -201,9 +201,9 @@ graphify "${VAULT_PATH}" --update
 
 - graph.json이 없으면 graphify가 자동으로 풀 빌드로 전환
 - graphify 명령의 stdout을 한 줄로 요약해서 사용자에게 보고 (구체적 포맷은 graphify 출력에 의존)
-- 실패해도 분석은 성공으로 간주
+- 실패해도 분석은 성공으로 간주 (그래프는 다음 wiki-lint에서 복구)
 
-`${VAULT_PATH}`: "Vault 경로 탐지" 또는 `OBSIDIAN_VAULT_PATH` 환경변수로 결정된 경로.
+**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 ## 확장 분석 (사용자 요청 시)
 

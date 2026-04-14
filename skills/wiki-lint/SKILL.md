@@ -14,6 +14,7 @@ license: MIT
 아래 순서로 Vault 경로를 결정:
 1. 환경변수 `OBSIDIAN_VAULT_PATH`가 있으면 사용
 2. `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault` (iCloud)
+3. Vault 내 `CLAUDE.md`에 "Three-Layer" 또는 "raw/" 언급이 있는지 확인하여 검증
 
 ## 절차
 
@@ -141,7 +142,7 @@ Step 4의 "수정 실행 보고" 끝에 그래프 리빌드 결과 요약 추가
 - graphify 실행 실패 시 lint 자체는 성공으로 처리
 - 실패 메시지만 보고: "그래프 리빌드 실패 — 다음 lint에서 재시도"
 
-**`${VAULT_PATH}`**: "## Vault 경로 탐지" 섹션의 결과 경로.
+**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 ## 주의사항
 

@@ -9,9 +9,12 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 
 세션 종료 전에 실행. 이 세션에서 배운 것을 Obsidian LLM Wiki에 기록한다.
 
-## Vault 경로
+## Vault 경로 탐지
 
-`~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault`
+아래 순서로 Vault 경로를 결정:
+1. 환경변수 `OBSIDIAN_VAULT_PATH`가 있으면 사용
+2. `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault` (iCloud)
+3. Vault 내 `CLAUDE.md`에 "Three-Layer" 또는 "raw/" 언급이 있는지 확인하여 검증
 
 ## 절차
 
@@ -108,7 +111,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 
 ### 5. 그래프 증분 업데이트
 
-Step 4의 저장이 끝나면 vault 그래프를 증분 업데이트한다.
+Step 4에서 **실제로 저장된 항목이 있을 때만** 실행한다. Step 3에서 사용자가 [취소]를 선택했거나 승인된 항목이 0건이면 이 단계를 건너뛰고 Step 6으로 직행.
 
 **조건 체크:**
 ```bash
@@ -127,7 +130,7 @@ graphify "${VAULT_PATH}" --update
 - graphify 명령의 stdout을 한 줄로 요약해서 Step 6 완료 보고에 포함
 - 실패해도 wrap-up 자체는 성공 (그래프는 다음 lint에서 복구)
 
-**`${VAULT_PATH}`**: "## Vault 경로" 섹션의 경로 (또는 `OBSIDIAN_VAULT_PATH` 환경변수).
+**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 ### 6. 완료 보고
 
