@@ -106,36 +106,56 @@ Enter = 기본값 사용
 
 결과를 `USER_OUTPUT_PREF` 변수에 저장.
 
-### 3. 구조 생성
+## 초기 구조 (v3)
 
 **폴더 생성:**
 
 ```bash
-mkdir -p "${VAULT_PATH}/raw/articles"
-mkdir -p "${VAULT_PATH}/raw/papers"
-mkdir -p "${VAULT_PATH}/raw/repos"
-mkdir -p "${VAULT_PATH}/raw/data"
-mkdir -p "${VAULT_PATH}/raw/images"
-mkdir -p "${VAULT_PATH}/wiki/concepts"
-mkdir -p "${VAULT_PATH}/wiki/entities"
-mkdir -p "${VAULT_PATH}/wiki/sources"
-mkdir -p "${VAULT_PATH}/wiki/comparisons"
-mkdir -p "${VAULT_PATH}/wiki/projects"
+mkdir -p "$VAULT_PATH"/{raw/articles,raw/repos,raw/papers,wiki/sources,wiki/projects,wiki/concepts,wiki/entities,wiki/comparisons,outputs}
 ```
 
-**각 하위 폴더에 .gitkeep 생성:**
+**각 하위 폴더에 .gitkeep 생성 (outputs 제외):**
 
 ```bash
 touch "${VAULT_PATH}/raw/articles/.gitkeep"
-touch "${VAULT_PATH}/raw/papers/.gitkeep"
 touch "${VAULT_PATH}/raw/repos/.gitkeep"
-touch "${VAULT_PATH}/raw/data/.gitkeep"
-touch "${VAULT_PATH}/raw/images/.gitkeep"
+touch "${VAULT_PATH}/raw/papers/.gitkeep"
 touch "${VAULT_PATH}/wiki/concepts/.gitkeep"
 touch "${VAULT_PATH}/wiki/entities/.gitkeep"
 touch "${VAULT_PATH}/wiki/sources/.gitkeep"
 touch "${VAULT_PATH}/wiki/comparisons/.gitkeep"
 touch "${VAULT_PATH}/wiki/projects/.gitkeep"
+touch "${VAULT_PATH}/.rakis-v3-migrated"
+```
+
+**overview.md 템플릿 생성 (없을 때만):**
+
+```bash
+[ -f "${VAULT_PATH}/wiki/overview.md" ] || cat > "${VAULT_PATH}/wiki/overview.md" <<'EOF'
+---
+title: "Vault Overview"
+type: index
+sources: []
+related: []
+created: $(date +%Y-%m-%d)
+updated: $(date +%Y-%m-%d)
+description: "볼트 대시보드"
+---
+
+# Vault Overview
+
+## 주제 요약
+
+(자료 수집 후 wiki-lint가 자동 갱신)
+
+## 통계
+
+(wiki-lint가 자동 갱신)
+
+## 최근 활동
+
+(wiki-lint가 자동 갱신)
+EOF
 ```
 
 **index.md 템플릿 생성 (없을 때만):**
@@ -146,23 +166,23 @@ touch "${VAULT_PATH}/wiki/projects/.gitkeep"
 
 LLM이 관리하는 마스터 카탈로그. 새 페이지 생성 시 반드시 업데이트.
 
-## Concepts
+## Sources
 
 (비어있음 — 첫 자료 수집 시 자동 생성)
+
+## Projects
+
+(비어있음)
+
+## Concepts
+
+(비어있음)
 
 ## Entities
 
 (비어있음)
 
-## Sources
-
-(비어있음)
-
 ## Comparisons
-
-(비어있음)
-
-## Projects
 
 (비어있음)
 EOF
@@ -172,9 +192,9 @@ EOF
 
 ```bash
 [ -f "${VAULT_PATH}/log.md" ] || cat > "${VAULT_PATH}/log.md" <<'EOF'
-# Wiki Log
+# Log
 
-시간순 기록. 자료 수집/분석/린트 이력.
+시간순 기록. Claude가 자동으로 추가.
 
 EOF
 ```
@@ -185,7 +205,7 @@ EOF
 
 ```bash
 cat > "${VAULT_PATH}/CLAUDE.md" <<EOF
-# Vault Schema
+# Vault Schema (v3)
 
 이 vault는 Karpathy LLM Wiki 방법론(3-Layer)으로 관리된다. rakis 플러그인 스킬을 통해 수집·질의·점검이 이루어진다.
 
@@ -200,36 +220,41 @@ cat > "${VAULT_PATH}/CLAUDE.md" <<EOF
 ## Output
 선호 아웃풋: ${USER_OUTPUT_PREF}
 
-## Rules
+## 3-Layer 구조
 
 ### raw/ (Immutable)
 - 한 번 저장하면 절대 수정하지 않음
 - 원본 그대로 보존 (웹 클리핑, PDF, repomix 등)
+- 하위: articles/, repos/, papers/
 
 ### wiki/ (LLM 관리)
 - 모든 페이지는 YAML frontmatter 필수
-- 필수 필드: title, type, sources, comment, related, created, updated, confidence, description
-- \`comment\`: 수집 시 입력한 "왜 저장/분석했는지" (1-2문장 한국어)
+- 필수 필드: title, type, sources, related, created, updated, description
+- type enum: source-summary | project | concept | entity | comparison | index
 - 링크는 \`[[wiki-link]]\` 형식 (상대 링크)
 - 태그: #concept, #entity, #tool, #person
 
-### index.md
-- 새 페이지 생성 시 반드시 해당 섹션에 추가
-- 형식: \`- [[page-name]] — 한 줄 설명\`
-
-### log.md
-- 주요 작업 이력 기록
-- 형식: \`## [YYYY-MM-DD] page-name | 작업 설명\`
+### outputs/ (일회성 산출물)
+- wiki-lint, graph-report 등 LLM 산출물
+- 날짜 파일명 고정: {YYYY-MM-DD}-{tool}.{ext}
 
 ## 페이지 타입별 폴더
 
 | type | 폴더 |
 |------|------|
+| source-summary | wiki/sources/ |
+| project | wiki/projects/ |
 | concept | wiki/concepts/ |
 | entity | wiki/entities/ |
-| source-summary | wiki/sources/ |
 | comparison | wiki/comparisons/ |
-| project | wiki/projects/ |
+| index | wiki/ (overview.md) |
+
+## index.md와 log.md
+- index.md: 섹션별(sources/projects/concepts/entities/comparisons) 마스터 카탈로그
+- log.md: 시간순 기록. wiki-wrap-up이 자동 추가. raw 거치지 않음.
+
+## 예외 규칙 (v3)
+- wrap-up은 raw를 거치지 않고 wiki·log에 직접 쓴다. log.md가 출처 역할.
 
 ## 언어 규칙
 - 기술 용어는 영어 그대로
