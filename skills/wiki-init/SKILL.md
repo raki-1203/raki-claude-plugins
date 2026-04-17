@@ -282,18 +282,20 @@ find "${VAULT_PATH}/wiki" -name '*.md' -not -name '.gitkeep' | head -1
 ✅ wiki-init 완료
 
 vault: ${VAULT_PATH}
-생성된 구조: 5 raw/ + 5 wiki/ 하위폴더
-CLAUDE.md: 생성됨 (사용자 프로필 + 규칙)
+생성된 구조: 3 raw/ + 5 wiki/ + outputs/
+CLAUDE.md: 생성됨 (v3 스키마)
 
 다음 단계:
   1. 환경변수 설정 (선택):
      export OBSIDIAN_VAULT_PATH="${VAULT_PATH}"
   2. 첫 자료 수집:
-     /source-analyze <URL> "왜 분석하는지"
-  3. 그래프 빌드 (자료가 쌓인 후):
-     /graphify "${VAULT_PATH}"
-  4. 질의:
-     "~ 정리된 거 있어?"
+     /rakis:source-fetch <URL>
+  3. 위키 컴파일:
+     /rakis:wiki-ingest
+  4. 그래프 빌드 (위키가 쌓인 후):
+     cd "${VAULT_PATH}" && /graphify wiki
+  5. 질의:
+     /rakis:wiki-query "~ 정리된 거 있어?"
 ```
 
 ## 주의사항
