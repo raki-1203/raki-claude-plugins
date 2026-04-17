@@ -17,7 +17,8 @@
 | 상황 | 스킬 |
 |------|------|
 | 이전에 조사/저장한 내용 검색·질문 | `rakis:wiki-query` |
-| URL·파일·repo 분석 | `rakis:source-analyze` |
+| URL·파일·repo 수집 | `rakis:source-fetch` |
+| v2 → v3 vault 마이그레이션 | `rakis:migrate-v3` |
 | 새 지식을 위키에 저장 | `rakis:wiki-ingest` |
 | 세션 마무리 시 학습 기록 | `rakis:wiki-wrap-up` |
 | 위키 건강 점검 (주 1회) | `rakis:wiki-lint` |

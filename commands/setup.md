@@ -156,6 +156,29 @@ touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
 
 빠진 항목이 있다면 별도 표시. 마커 생성 여부도 명시.
 
+## 단계 9: v2 구조 감지 (Vault 이동 전 체크)
+
+Vault 경로가 탐지되면, v2 잔재 확인:
+
+```bash
+LEGACY_COUNT=$(find "$VAULT/raw" -maxdepth 3 \( -name "graph-report.md" -o -name "analysis.md" \) -type f 2>/dev/null | wc -l | tr -d ' ')
+HAS_MARKER=$( [ -f "$VAULT/.rakis-v3-migrated" ] && echo 1 || echo 0 )
+
+if [ "$LEGACY_COUNT" -gt 0 ] && [ "$HAS_MARKER" = "0" ]; then
+  cat <<EOS
+⚠️  v2 구조가 감지되었습니다 (legacy 파일 $LEGACY_COUNT개).
+
+v3 스킬을 사용하기 전에 먼저 마이그레이션을 실행하세요:
+
+  /rakis:migrate-v3 --dry-run   # 영향 확인
+  /rakis:migrate-v3             # 실제 실행
+
+이 단계 없이 v3 스킬을 돌리면 wiki/와 raw/가 불일치 상태가 됩니다.
+EOS
+  exit 1
+fi
+```
+
 ## Idempotent 보장
 
 `/rakis:setup`은 언제 다시 실행해도 안전합니다:
