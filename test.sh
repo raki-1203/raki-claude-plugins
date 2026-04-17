@@ -324,11 +324,24 @@ case "$TARGET" in
   graphify)
     test_graphify
     ;;
+  smoke)
+    ;;
   *)
-    echo "Usage: ./test.sh [all|deps|source|wiki|graphify]"
+    echo "Usage: ./test.sh [all|deps|source|wiki|graphify|smoke]"
     exit 1
     ;;
 esac
+
+# ─── v3 smoke E2E ───
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "smoke" ]; then
+  echo ""
+  echo "🧪 v3 Smoke E2E"
+  if bash tests/e2e/smoke.sh >/dev/null; then
+    pass "smoke E2E"
+  else
+    fail "smoke E2E — bash tests/e2e/smoke.sh"
+  fi
+fi
 
 # ─── 결과 ───
 
