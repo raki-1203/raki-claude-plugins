@@ -28,7 +28,7 @@ wiki/ 하위 모든 .md 파일을 읽음:
 - `projects/` (레거시 폴더, 존재하는 경우)
 - `index.md`, `log.md`
 
-### 2. 5가지 점검 항목
+### 2. 5가지 점검 항목 + v3 스키마 검사
 
 #### A. 모순 (Contradictions)
 서로 다른 페이지에서 같은 사실을 다르게 기술하는 경우.
@@ -67,6 +67,25 @@ frontmatter가 불완전한 페이지:
 [b] 일괄 "migrated - 코멘트 없이 생성된 초기 페이지" 로 채우기
 [s] 건너뛰기 (다음 lint에서 다시 물음)
 ```
+
+### v3 스키마 검사
+
+1. **frontmatter `confidence` 필드 금지**
+   ```bash
+   grep -rln "^confidence:" "$VAULT/wiki/" && echo "위반: confidence 필드 발견"
+   ```
+
+2. **`type:` enum 검증** (source-summary / project / concept / entity / comparison / index)
+   ```bash
+   find "$VAULT/wiki" -name "*.md" -exec uv run python3 "$PLUGIN_ROOT/scripts/frontmatter.py" validate {} \;
+   ```
+
+3. **`raw/` 불변성 검증**
+   `raw/`에 `graph-report.md`, `analysis.md` 같은 LLM 파생물이 있는지 확인:
+   ```bash
+   find "$VAULT/raw" -maxdepth 3 \( -name "graph-report.md" -o -name "analysis.md" \) -type f
+   ```
+   발견되면 "migrate-v3 미완료" 경고.
 
 ### 3. 보고서 작성
 
@@ -130,6 +149,24 @@ lint는 주 1회 수행되므로 이 시점에 풀 빌드(`--update` 없이)를 
 ```
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
+
+## 출력 처리
+
+1. **상세 리포트 저장**: `$VAULT/outputs/lint-{YYYY-MM-DD}.md`에 발견 건 전체 기록 (재실행 시 덮어씀)
+2. **overview.md 통계 갱신**: `$VAULT/wiki/overview.md`의 "통계" 섹션을 다음 블록으로 교체(없으면 생성):
+   ```markdown
+   ## 통계 (자동 갱신 · 최근 lint: {YYYY-MM-DD})
+
+   - 총 wiki 페이지: {N}
+   - 소스: {S}
+   - 프로젝트: {P}
+   - 개념: {C}
+   - 최근 7일 새 페이지: {n}
+   - 린트 위반: {V}건 (상세: `outputs/lint-{date}.md`)
+   ```
+3. **log.md 한 줄**: `## [{YYYY-MM-DD}] lint | {V}건 발견 (고아 {O}, stale {S}, frontmatter {F})`
+4. **graphify 풀 리빌드 안내** (출력 마지막):
+   > `cd "{VAULT}" && /graphify wiki` — 주 1회 풀 리빌드 권장
 
 ## 주의사항
 

@@ -169,6 +169,47 @@ rm -f "$TRIGGER_FILE"
 
 echo ""
 
+# ─── v3 추가 검증 ───
+
+echo "🧪 v3 유닛 테스트"
+
+if bash tests/unit/test_slug.sh >/dev/null 2>&1; then
+  pass "slug 유닛 테스트"
+else
+  fail "slug 유닛 테스트 — bash tests/unit/test_slug.sh"
+fi
+
+if bash tests/unit/test_frontmatter.sh >/dev/null 2>&1; then
+  pass "frontmatter 유닛 테스트"
+else
+  fail "frontmatter 유닛 테스트 — bash tests/unit/test_frontmatter.sh"
+fi
+
+echo ""
+
+echo "📋 v3 스킬 집합"
+
+EXPECTED=(source-fetch wiki-ingest wiki-query wiki-wrap-up wiki-lint wiki-init migrate-v3)
+FORBIDDEN=(source-analyze)
+
+for s in "${EXPECTED[@]}"; do
+  if [ -d "skills/$s" ]; then
+    pass "스킬 존재: $s"
+  else
+    fail "스킬 누락: $s"
+  fi
+done
+
+for s in "${FORBIDDEN[@]}"; do
+  if [ -d "skills/$s" ]; then
+    fail "스킬 제거 안됨 (v3에서 제거): $s"
+  else
+    pass "스킬 제거됨: $s"
+  fi
+done
+
+echo ""
+
 # ─── 결과 요약 ───
 
 echo "=== 결과 ==="

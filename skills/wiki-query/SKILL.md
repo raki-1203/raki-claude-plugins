@@ -9,6 +9,15 @@ license: MIT
 
 위키에 축적된 지식을 기반으로 질문에 답변한다. RAG 대신 **컴파일된 지식**을 활용.
 
+## 인자
+
+```
+/rakis:wiki-query "<질문>" [--scope project]
+```
+
+- 기본: 전체 vault 탐색 (답변형/탐색형 자동 분기)
+- `--scope project`: 탐색 범위를 `wiki/projects/{현재디렉토리basename}.md` + 그 `related:` 이웃으로 제한. 프로젝트 컨텍스트가 확실한 질문용.
+
 ## Vault 경로 탐지
 
 아래 순서로 Vault 경로를 결정:
@@ -33,12 +42,20 @@ license: MIT
 - 명시적 질문: "X가 뭐야?", "X 쓰는 법?", "X vs Y"
 
 분기:
-- **답변형** → Step 1 (index.md 읽기)로 진행
+- **답변형** → Step 1 (overview.md → index.md 읽기)로 진행
 - **탐색형** → Step 1-A (프로젝트 컨텍스트 수집)로 분기
 
 ### 1-A. 탐색형 처리 (프로젝트 컨텍스트 기반 관련 페이지 찾기)
 
 **이 단계는 Step 0에서 탐색형으로 분기된 경우에만 실행.** 답변형이면 Step 1로.
+
+#### 1-A-0: 스코프 체크
+
+`--scope project`가 주어지면:
+1. 현재 작업 디렉토리 basename으로 `wiki/projects/{name}.md` 찾기
+2. 해당 페이지의 `related:` frontmatter에서 이웃 페이지 수집
+3. graphify query는 이 페이지 집합에만 한정(`--nodes` 옵션 또는 필터 후처리)
+4. 매칭되는 프로젝트 페이지 없으면 "프로젝트 페이지 없음. 스코프 해제" 경고 후 전체 탐색
 
 #### 1-A-1. 프로젝트 컨텍스트 압축 수집 (≤50줄)
 
@@ -68,7 +85,7 @@ command -v graphify && [ -f "${VAULT_PATH}/graph.json" ]
 
 **실행:**
 ```bash
-cd "${VAULT_PATH}" && graphify query "프로젝트 컨텍스트:
+cd "${VAULT_PATH}" && /graphify wiki --query "프로젝트 컨텍스트:
 ${CONTEXT}
 
 위 프로젝트와 관련된 위키 페이지를 찾아주세요. 직접 관련, 간접 관련, 잠재 유용으로 분류해주세요."
@@ -107,10 +124,11 @@ graphify query 결과를 **페이지 목록만** 출력. 내용은 읽지 않음
 - "N번만" → 해당 페이지만 Read → Step 3 답변 합성으로 **직행** (Step 1, 2 생략)
 - "끝내" → 여기서 종료
 
-### 1. index.md 읽기
+## Step 1 — 답변형 분기
 
-`index.md`를 **반드시 먼저** 읽어 관련 페이지를 파악한다.
-이것이 위키의 검색 엔진 역할을 한다.
+1. **overview.md 먼저 읽기**: `$VAULT/wiki/overview.md` 존재 시 먼저 스캔하여 질문과 관련된 주요 페이지 힌트 수집 (없으면 skip).
+2. **index.md 읽기**: 전체 페이지 목록에서 관련 frontmatter `description`·제목 매칭.
+3. **개별 페이지 탐색**: Step 2에서 식별된 1-3개 wiki 페이지를 읽고 답변 합성.
 
 ### 2. 관련 페이지 탐색
 
@@ -143,12 +161,12 @@ command -v graphify && [ -f "${VAULT_PATH}/graph.json" ]
 
 둘 다 성공 시:
 ```bash
-cd "${VAULT_PATH}" && graphify query "질문 내용"
+cd "${VAULT_PATH}" && /graphify wiki --query "질문 내용"
 ```
 
 graphify query 결과를 Step 3의 답변 합성에 추가 자료로 활용.
 
-graph.json이 없으면 건너뛰되, 응답 끝에 한 줄 안내 추가: "`/graphify \"${VAULT_PATH}\"` 실행 후 재질의하면 그래프 기반 심층 답변 가능."
+graph.json이 없으면 건너뛰되, 응답 끝에 한 줄 안내 추가: "`cd \"${VAULT_PATH}\" && /graphify wiki --update` 실행 후 재질의하면 그래프 기반 심층 답변 가능."
 
 **`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
@@ -156,14 +174,13 @@ graph.json이 없으면 건너뛰되, 응답 끝에 한 줄 안내 추가: "`/gr
 
 - 위키 페이지를 `[[wiki-link]]` 형태로 인용하며 답변
 - 여러 페이지의 정보를 종합할 때 출처를 명시
-- `confidence`가 low인 정보는 불확실하다고 표시
 - `updated:` 날짜가 오래된 정보는 "최신 정보가 아닐 수 있음" 표시
 
 ### 4. 새 페이지 생성 (선택적)
 
 답변이 충분히 가치 있고 기존에 없는 내용이면:
 - 적절한 `wiki/` 하위 폴더에 새 페이지 생성
-- YAML frontmatter 포함 (type, sources, related, created, updated, confidence, description)
+- YAML frontmatter 포함 (type, sources, related, created, updated, description)
 - `index.md` 갱신
 - `log.md` 기록
 

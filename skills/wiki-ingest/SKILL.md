@@ -1,146 +1,116 @@
 ---
 name: wiki-ingest
-description: "Obsidian LLM Wiki에 새 자료를 수집(Ingest). 사용자가 URL, 글, PDF, 정보를 '저장해줘', '위키에 넣어줘', '정리해줘'라고 하거나, 조사/리서치 결과를 기록할 때 사용. raw/에 원본 저장 후 wiki/ 페이지를 자동 생성·갱신한다."
-version: 1.0.0
-license: MIT
+description: Use when raw sources have been fetched (via /rakis:source-fetch or manual drop) and need to be compiled into wiki/ pages. Scans raw/ incrementally (only unprocessed sources), creates wiki/sources/{slug}.md, updates affected concept/project pages, and bumps index.md + log.md. Does NOT fetch — upstream work belongs to source-fetch.
 ---
 
-# wiki-ingest — Obsidian LLM Wiki 자료 수집
+# wiki-ingest — raw → wiki 컴파일
 
-Karpathy의 LLM Knowledge Base 방법론 기반. 새 자료를 3-Layer Vault에 수집한다.
+raw에 수집된 소스 중 아직 위키에 반영되지 않은 것을 찾아 `wiki/sources/{slug}.md`를 만들고, 영향받는 기존 위키 페이지를 업데이트한다.
 
 ## Vault 경로 탐지
 
-아래 순서로 Vault 경로를 결정:
-1. 환경변수 `OBSIDIAN_VAULT_PATH`가 있으면 사용
-2. `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault` (iCloud)
-3. Vault 내 `CLAUDE.md`에 "Three-Layer" 또는 "raw/" 언급이 있는지 확인하여 검증
+source-fetch와 동일 순서 (`OBSIDIAN_VAULT_PATH` → iCloud → CLAUDE.md 검증).
 
-## 절차
+## 인자
 
-### 0. 코멘트 수집 (Gold In, Gold Out)
+```
+/rakis:wiki-ingest [--full]
+```
 
-"왜 저장하는지" 목적을 반드시 기록한다. 이 코멘트는 wiki/ 페이지 frontmatter의 `comment` 필드로 저장되어 나중에 맥락 파악/역검색에 사용된다.
+- 기본: 증분 (미처리 소스만)
+- `--full`: 전체 재컴파일 (마이그레이션·대규모 재구조화 용)
 
-**입력 방식:**
-- 인자로 전달: `/wiki-ingest <자료> "왜 저장하는지"`
-- 인자 없으면 질문:
-  ```
-  왜 이 자료를 저장하시나요? (한 줄, 한국어 권장)
-  > _____
-  ```
-- 사용자가 답할 때까지 대기 (빈 답변 거부)
+## Phase 0: 미처리 소스 탐지
 
-**형식:**
-- 1-2 문장, 한국어
-- 예시:
-  - `"jobdori 분석 중 원류 프레임워크로 등장"`
-  - `"프로젝트 X 상태 관리 조사 중 발견, riverpod 비교 대상"`
+```bash
+# 1. 전수 스캔
+find "$VAULT/raw" -name "meta.json" -type f
 
-수집된 코멘트를 변수로 보관하여 Step 2의 frontmatter 생성과 이후 기존 페이지 업데이트에 사용한다.
+# 2. 각 meta.json마다 slug 추출 → wiki/sources/{slug}.md 존재 확인
+# 존재하지 않으면 "미처리"로 분류
+```
 
-### 1. 원본 저장 (raw/) — Immutable
+`--full` 플래그 있으면 기존 `wiki/sources/*` 페이지를 삭제하고 전체를 미처리로 취급(단, `index.md`·`overview.md`·`log.md`·`projects/`·`concepts/`·`entities/`는 보존).
 
-소스 유형에 따라 적절한 하위 폴더에 저장. **한 번 저장하면 절대 수정하지 않는다.**
+미처리 0건이면 "변경 없음" 출력 후 종료.
 
-| 유형 | 폴더 | 방법 |
-|------|------|------|
-| URL/웹 글 | `raw/articles/` | WebFetch로 내용 가져와 마크다운으로 저장 |
-| PDF | `raw/papers/` | 파일 복사 또는 요약 저장 |
-| 코드/레포 | `raw/repos/` | README, 핵심 코드 발췌 |
-| 데이터 | `raw/data/` | CSV, JSON 등 |
-| 이미지 | `raw/images/` | 스크린샷, 다이어그램 |
-| 기타 | `raw/assets/` | 다운로드 첨부파일 |
+## Phase 1: 소스 페이지 생성
 
-파일명: `kebab-case.md` (날짜 접두사 선택적: `2026-04-07-title.md`)
+각 미처리 소스마다:
 
-### 2. 요약 페이지 생성 (wiki/sources/)
+1. `raw/{type}/{slug}/source.md|source.pdf|repomix.txt` 읽기
+2. `raw/{type}/{slug}/notebooklm/briefing.md` 존재 시 핵심 요약 근거로 활용
+3. `raw/{type}/{slug}/notebooklm/study-guide.md` 존재 시 주요 질문 추출
+4. `wiki/sources/{slug}.md` 생성
 
-모든 wiki 페이지는 반드시 YAML frontmatter를 포함:
+Frontmatter (필수):
 
 ```yaml
 ---
-title: Source Title
+title: "{meta.title or slug}"
 type: source-summary
-sources:
-  - "[[raw/articles/source-file]]"
-comment: "Step 0에서 수집한 사용자 코멘트 — 왜 저장했는지"
-related:
-  - "[[관련-위키-페이지]]"
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-confidence: high | medium | low
-description: 한 줄 요약
+sources: ["[[raw/{type}/{slug}]]"]
+related: []
+created: {meta.captured_at date}
+updated: {today}
+description: "{한 줄 요약 — 20자 이내}"
+comment: "{사용자가 제공했으면 기록. 없으면 생략}"
 ---
 ```
 
-**`comment` 필드**: Step 0에서 수집한 사용자 코멘트를 그대로 기록. 1-2 문장, 한국어. 나중에 wiki-query의 역검색 대상이 된다.
+본문 구조 (섹션):
+- **요약**: 3-5줄
+- **핵심 개념**: 순차 bullet
+- **주요 인용/발췌**: briefing.md 기반 (있을 때)
+- **연관 질문**: study-guide.md 기반 (있을 때)
+- **원본**: `[[raw/.../source...]]`
 
-핵심 내용을 구조화하여 요약. 원문 인용은 `>` 블록쿼트 사용.
+## Phase 2: 기존 페이지 업데이트 (index.md 기반 연결)
 
-### 3. 기존 위키 페이지 업데이트
+1. `$VAULT/index.md` 읽기
+2. 새 소스의 핵심 키워드(`description`, 상위 개념)로 index 섹션 매칭
+3. 매칭된 기존 wiki 페이지에 대해:
+   - 해당 페이지 frontmatter `related:`에 `[[sources/{slug}]]` 추가 (중복 방지)
+   - 해당 페이지 본문에 "관련 소스" 섹션이 있으면 한 줄 append, 없으면 섹션 생성
+4. 매칭되는 프로젝트 있으면 `wiki/projects/{name}.md`의 섹션(Decisions/Patterns/Gotchas 중 적합한 곳)에 한 줄 추가
+5. 새 개념이 등장했는데 `wiki/concepts/*`에 없으면 사용자 승인 후 신규 페이지 생성
 
-1. `index.md`를 읽어 관련 기존 페이지 파악
-2. 관련 페이지의 내용 보강, `related:` 링크 추가, `updated:` 갱신
-3. 새 개념이 발견되면 → `wiki/concepts/`에 새 페이지
-4. 새 사람/조직이 발견되면 → `wiki/entities/`에 새 페이지
-5. 비교 분석이 필요하면 → `wiki/comparisons/`에 새 페이지
-6. 프로젝트 고유 지식이면 → `wiki/projects/`에 새 페이지 (아키텍처 결정, 상태, 이슈 등)
-7. 기존 페이지에 `comment` 필드가 없으면 Step 0에서 수집한 코멘트로 보완. 이미 있으면 기존 값 유지 (덮어쓰지 않음).
+## Phase 3: index.md · log.md 갱신
 
-**하나의 source가 10-15개 기존 페이지에 영향을 줄 수 있다.**
+- `index.md`:
+  - `sources/` 섹션에 `- [[sources/{slug}]] — {description}` 추가 (알파벳 정렬)
+  - 새로 생성한 `concepts/`·`projects/` 페이지가 있으면 해당 섹션에도 추가
+- `log.md`:
+  - 위쪽에 `## [{YYYY-MM-DD}] {slug} | ingest — {description}` 한 줄 삽입
 
-### 4. index.md 갱신
+## Phase 4: 출력 + graphify 안내
 
-새로 생성된 모든 페이지를 적절한 섹션(Concepts/Entities/Sources/Comparisons/Projects)에 추가.
-형식: `- [[page-name]] — 한 줄 설명`
-
-### 5. log.md 기록
-
-맨 아래에 추가:
+출력:
 ```
-## [YYYY-MM-DD] page-name | 작업 설명
+✓ N개 소스 반영
+  - sources/{slug1}.md (신규)
+  - sources/{slug2}.md (신규)
+  - concepts/{name}.md (업데이트)
+  - projects/{name}.md (업데이트)
+
+그래프 증분 업데이트 권장:
+  cd "{VAULT}" && /graphify wiki --update
 ```
 
-### 6. 그래프 업데이트 안내
+## 에러 처리
 
-저장 완료 후, 사용자에게 그래프 증분 업데이트를 안내한다 (자동 실행 안 함).
+| 상황 | 대응 |
+|------|------|
+| raw meta.json 파싱 실패 | 해당 소스 건너뛰고 경고 출력, 계속 진행 |
+| 대상 wiki 페이지 쓰기 실패 | 트랜잭션처럼 롤백 어려움 — 실패 지점까지 보고 후 종료 |
+| `--full` 실행 중 중단 | 기존 sources/ 디렉터리는 이미 삭제됐으므로 다시 `--full` 재실행 권장 안내 |
 
-graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH> --update` 형태로 사용자가 직접 invoke해야 그래프가 갱신된다. bash 호출로는 실행되지 않으니 주의.
+## frontmatter 검증
 
-**조건 체크 (`command -v graphify`):**
-- 성공 → 완료 보고 끝에 한 줄 안내 출력:
-  > "그래프 증분 업데이트: `/graphify \"${VAULT_PATH}\" --update` 실행 권장 (wiki-query 탐색형/심층 질의에 반영됩니다)"
-- 실패 → 조용히 생략
+모든 신규·업데이트 페이지는 쓰기 직후 검증:
 
-**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
+```bash
+uv run python3 "$PLUGIN_ROOT/scripts/frontmatter.py" validate "{path}"
+```
 
-그래프 정합성은 주 1회 `/wiki-lint` 실행 시 자동으로 제안되는 풀 리빌드로 복구된다.
-
-## 페이지 유형별 폴더
-
-| type | 폴더 | 예시 |
-|------|------|------|
-| concept | `wiki/concepts/` | openclaw.md, mcp-server.md |
-| entity | `wiki/entities/` | anthropic.md, heo-yechan.md |
-| source-summary | `wiki/sources/` | karpathy-llm-wiki-gist.md |
-| comparison | `wiki/comparisons/` | openclaw-vs-claude-channels.md |
-| project | `wiki/projects/` | claude-config.md, kt-innovation-hub.md |
-
-## 링킹 규칙
-
-- Obsidian 스타일 `[[wiki-link]]` 사용
-- wiki/ 내에서는 상대 링크: `[[openclaw]]` (전체 경로 아님)
-- 태그: `#concept`, `#entity`, `#tool`, `#person`
-
-## 언어 규칙
-
-- 기술 용어: 영어 그대로
-- 설명/서술: 한국어
-
-## 주의사항
-
-- `raw/` 파일은 생성 후 **절대 수정하지 않음** (immutable)
-- 모든 wiki 페이지에 YAML frontmatter **필수**
-- frontmatter의 `description`은 dataview 쿼리에 사용되므로 반드시 작성
-- 이미 존재하는 페이지를 중복 생성하지 말 것 — index.md를 먼저 확인
+실패 시 해당 파일을 `.broken.md`로 이름 변경하고 경고 출력.
