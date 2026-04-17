@@ -227,14 +227,14 @@ test_wiki() {
     fname=$(basename "$wf")
     if head -1 "$wf" | grep -q "^---"; then
       if grep -q "^title:" "$wf" && grep -q "^type:" "$wf"; then
-        ((PASS_FM++))
+        PASS_FM=$((PASS_FM + 1))
       else
         fail "$fname: title 또는 type 누락"
-        ((FAIL_FM++))
+        FAIL_FM=$((FAIL_FM + 1))
       fi
     else
       fail "$fname: frontmatter 없음"
-      ((FAIL_FM++))
+      FAIL_FM=$((FAIL_FM + 1))
     fi
   done < <(find "$VAULT/wiki" -name "*.md" -type f 2>/dev/null)
   if [ "$FAIL_FM" -eq 0 ]; then
