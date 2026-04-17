@@ -326,11 +326,31 @@ case "$TARGET" in
     ;;
   smoke)
     ;;
+  v3)
+    ;;
   *)
-    echo "Usage: ./test.sh [all|deps|source|wiki|graphify|smoke]"
+    echo "Usage: ./test.sh [all|deps|source|wiki|graphify|smoke|v3]"
     exit 1
     ;;
 esac
+
+# ─── v3 단절 검증 ───
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "v3" ]; then
+  echo ""
+  echo "🔎 v3 단절 검증"
+  if [ -d skills/source-analyze ]; then
+    fail "source-analyze 스킬이 남아있음 — v3에서는 제거되어야 함"
+  else
+    pass "source-analyze 제거됨"
+  fi
+  for s in source-fetch migrate-v3; do
+    if [ -d "skills/$s" ]; then
+      pass "v3 스킬 존재: $s"
+    else
+      fail "v3 스킬 누락: $s"
+    fi
+  done
+fi
 
 # ─── v3 smoke E2E ───
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "smoke" ]; then
