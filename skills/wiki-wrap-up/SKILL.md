@@ -100,7 +100,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 승인된 항목에 대해:
 
 1. **새 개념/엔티티** → `wiki/concepts/` 또는 `wiki/entities/`에 새 페이지 생성
-   - YAML frontmatter 포함 (title, type, sources, `comment`, related, created, updated, confidence, description)
+   - YAML frontmatter 포함 (title, type, sources, `comment`, related, created, updated, description)
    - `comment`: Step 1에서 자동 추출된 값 또는 Step 3에서 사용자가 수정한 값
 2. **기존 페이지 보강** → 해당 페이지의 내용 업데이트, `updated:` 갱신
    - 기존 페이지에 `comment` 필드가 없으면 자동 추가 (이 세션에서 추출된 값으로)
@@ -136,9 +136,16 @@ graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH> --update` 형태
 다음 세션에서 "~에 대해 정리된 거 있어?"로 찾을 수 있습니다.
 ```
 
+## 종료 안내
+
+작업 저장 후 다음 명령을 사용자에게 안내:
+
+> 그래프 증분 업데이트 권장: `cd "{VAULT}" && /graphify wiki --update`
+
 ## 주의사항
 
 - 사용자 승인 없이 저장하지 않음
 - 과도하게 많이 저장하지 않음 — 세션당 핵심 3-5건이 적정
 - 이미 위키에 있는 내용은 중복 생성하지 않고 업데이트
 - `raw/`에는 저장하지 않음 (wrap-up은 가공된 지식이므로 wiki/에 직접)
+- **예외 규칙(v3)**: wrap-up은 raw를 거치지 않고 wiki/log에 직접 쓴다. 대화 기반 지식은 log.md가 출처 역할을 겸한다.
