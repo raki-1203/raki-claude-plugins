@@ -29,30 +29,47 @@ notebooklm auth check --test 2>&1 | grep -q "Authentication is valid" || {
 
 ## 실행 순서
 
-```bash
-NB_ID=$(notebooklm notebook create --title "{slug}" --format id)
+> **CLI 규칙**: `notebooklm-py`는 `notebook` 네임스페이스가 없음. `create/delete/generate/download` 모두 **최상위 명령**. 노트북은 `-n <id>` 옵션 또는 `notebooklm use <id>` 컨텍스트로 지정.
 
-# 업로드 (유형별)
+```bash
+# 1. 노트북 생성 — JSON 파싱으로 ID 추출
+NB_ID=$(notebooklm create "{slug}" --json | jq -r '.notebook.id')
+
+# 2. 소스 업로드 (유형별) — source add 는 파일 경로/URL 자동 감지
 case "$TYPE" in
-  repo)   notebooklm source add --file "raw/repos/{slug}/repomix.txt" "$NB_ID" ;;
-  paper)  notebooklm source add --file "raw/papers/{slug}/source.pdf" "$NB_ID" ;;
+  repo)   notebooklm source add "raw/repos/{slug}/repomix.txt" -n "$NB_ID" ;;
+  paper)  notebooklm source add "raw/papers/{slug}/source.pdf"  -n "$NB_ID" ;;
   article)
     if [ -n "$URL" ]; then
-      notebooklm source add --url "$URL" "$NB_ID"
+      notebooklm source add "$URL" -n "$NB_ID"
     else
-      notebooklm source add --file "raw/articles/{slug}/source.md" "$NB_ID"
+      notebooklm source add "raw/articles/{slug}/source.md" -n "$NB_ID"
     fi
     ;;
 esac
 
-# 생성 대기 (notebooklm --wait 플래그 사용)
-notebooklm notebook mindmap "$NB_ID" --wait --output "raw/{type}/{slug}/notebooklm/mindmap.md"
-notebooklm notebook briefing "$NB_ID" --wait --output "raw/{type}/{slug}/notebooklm/briefing.md"
-notebooklm notebook study-guide "$NB_ID" --wait --output "raw/{type}/{slug}/notebooklm/study-guide.md"
+# 3. 산출물 생성 + 다운로드 (generate → download 2단계)
+#
+#    - mind-map  → JSON 파일 (mindmap.json)
+#    - briefing  → report --format briefing-doc → markdown
+#    - study-guide → report --format study-guide → markdown
+#
+#    report 산출물은 노트북에 여러 개 존재할 수 있으므로 생성 직후 --latest 로 받는다.
 
-# 노트북 삭제 (ID 추적 안 함)
-notebooklm notebook delete "$NB_ID" --yes
+notebooklm generate mind-map -n "$NB_ID"
+notebooklm download mind-map -n "$NB_ID" "raw/{type}/{slug}/notebooklm/mindmap.json" --force
+
+notebooklm generate report --format briefing-doc --wait -n "$NB_ID"
+notebooklm download report --latest -n "$NB_ID" "raw/{type}/{slug}/notebooklm/briefing.md" --force
+
+notebooklm generate report --format study-guide --wait -n "$NB_ID"
+notebooklm download report --latest -n "$NB_ID" "raw/{type}/{slug}/notebooklm/study-guide.md" --force
+
+# 4. 노트북 삭제 (ID 추적 안 함)
+notebooklm delete -n "$NB_ID" -y
 ```
+
+> **언어 설정**: 출력 언어는 `notebooklm language set <code>` 로 계정 전체에 적용됨 (글로벌). `/rakis:setup` 단계 6 참조. 산출 호출마다 `--language` 플래그로 덮어쓰기도 가능.
 
 ## 대용량 소스 분할
 
@@ -61,7 +78,7 @@ repomix.txt가 2MB 초과 시 notebooklm이 400 에러. 분할 업로드:
 ```bash
 split -b 1800k -a 2 -d "raw/repos/{slug}/repomix.txt" /tmp/{slug}-part-
 for p in /tmp/{slug}-part-*; do
-  notebooklm source add --file "$p" "$NB_ID"
+  notebooklm source add "$p" -n "$NB_ID"
 done
 rm /tmp/{slug}-part-*
 ```
@@ -73,7 +90,7 @@ rm /tmp/{slug}-part-*
 ```bash
 if [ "${RAKIS_NOTEBOOKLM_MOCK:-0}" = "1" ]; then
   mkdir -p "raw/{type}/{slug}/notebooklm"
-  echo "# Mock Mindmap for {slug}" > "raw/{type}/{slug}/notebooklm/mindmap.md"
+  echo '{"mock": "mindmap for {slug}"}' > "raw/{type}/{slug}/notebooklm/mindmap.json"
   echo "# Mock Briefing for {slug}" > "raw/{type}/{slug}/notebooklm/briefing.md"
   echo "# Mock Study Guide for {slug}" > "raw/{type}/{slug}/notebooklm/study-guide.md"
   exit 0
