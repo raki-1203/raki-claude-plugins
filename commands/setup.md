@@ -104,7 +104,49 @@ command -v uv
 
 (자동 실행 금지 — 인터랙티브 브라우저 로그인이라 자동화 불가)
 
-## 단계 6: 글로벌 CLAUDE.md에 스킬 매핑 추가
+## 단계 6: NotebookLM 출력 언어 확인
+
+`notebooklm`이 설치되어 있을 때만 실행. 미설치면 이 단계 전체 건너뜀.
+
+```bash
+command -v notebooklm >/dev/null || { echo "notebooklm 미설치 — 언어 설정 건너뜀"; }
+```
+
+설치되어 있으면 인증 상태 먼저 확인:
+
+```bash
+notebooklm auth check --test 2>&1 | grep -q "Authentication is valid"
+```
+
+- **실패** → 다음 안내만 출력하고 이 단계 종료 (마커 생성에는 영향 없음):
+  > notebooklm 인증이 필요합니다. `! notebooklm login` 실행 후 `/rakis:setup`을 다시 돌리면 언어 설정까지 완료됩니다.
+
+- **성공** → 현재 언어 확인:
+
+```bash
+notebooklm language get
+```
+
+출력 파싱:
+- `Language: ko` 포함 → "NotebookLM 출력 언어: ko (한국어) ✓" 출력 후 통과
+- 그 외 (`not set`, `en`, 기타) → 사용자에게 다음과 같이 묻고 대기:
+
+```
+NotebookLM 출력 언어가 현재 '<감지된 값>' 입니다.
+mindmap/briefing/study-guide가 이 언어로 생성됩니다.
+
+[y] 한국어(ko)로 설정
+[o] 다른 언어 코드 직접 입력
+[n] 그대로 두기 (건너뛰기)
+```
+
+- **[y]** → `notebooklm language set ko` 실행 후 결과 한 줄 출력
+- **[o]** → 언어 코드 받아서 `notebooklm language set <code>` 실행. 실패 시 `notebooklm language list`로 유효 코드 확인 안내
+- **[n]** → 건너뛰기
+
+> **주의**: `language`는 NotebookLM 계정의 GLOBAL 설정이라 모든 노트북에 적용됨. 여기서 한 번 `ko`로 맞춰두면 이후 source-fetch enrich 산출물이 한국어로 생성됨.
+
+## 단계 7: 글로벌 CLAUDE.md에 스킬 매핑 추가
 
 글로벌 CLAUDE.md(`~/.claude/CLAUDE.md`)에 rakis 스킬 매핑이 이미 있는지 확인:
 
@@ -125,7 +167,7 @@ grep -q "rakis:wiki-query" ~/.claude/CLAUDE.md 2>/dev/null
 
 **[n] 거부 시** → 건너뛰기 (마커 생성에 영향 없음).
 
-## 단계 7: 마커 생성
+## 단계 8: 마커 생성
 
 모든 필수 단계가 완료되었거나 사용자가 [s] 건너뛰기를 선택한 경우:
 
@@ -134,7 +176,7 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}"
 touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
 ```
 
-## 단계 8: 결과 요약
+## 단계 9: 결과 요약
 
 다음 형식으로 사용자에게 요약 출력:
 
@@ -154,9 +196,9 @@ touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
   ! notebooklm login
 ```
 
-빠진 항목이 있다면 별도 표시. 마커 생성 여부도 명시.
+빠진 항목이 있다면 별도 표시. 마커 생성 여부도 명시. NotebookLM 언어 설정 결과도 포함 (예: `NotebookLM 언어: ko ✓` 또는 `NotebookLM 언어: 건너뜀 (인증 필요)`).
 
-## 단계 9: v2 구조 감지 (Vault 이동 전 체크)
+## 단계 10: v2 구조 감지 (Vault 이동 전 체크)
 
 Vault 경로가 탐지되면, v2 잔재 확인:
 
