@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.3.0] — 2026-04-21
+
+### Added
+
+- `source-fetch` 스킬에 `--hint "<한 줄>"` 플래그 추가. NotebookLM `generate report` 호출 시 `--append`로 주입되어 briefing/study-guide가 해당 관점에 맞춰 생성된다.
+- `meta.json` 스키마에 `domain_hint` 필드 추가 (선택, 재수집 이력 보존).
+
+### Changed
+
+- enrich 단계의 briefing/study-guide 생성 명령이 `DOMAIN_HINT` 환경변수 유무에 따라 `--append`를 조건부로 붙이도록 수정. mind-map은 해당 옵션 미지원이므로 힌트 무관.
+
 ## [3.0.0] — 2026-04-17
 
 ### BREAKING CHANGES

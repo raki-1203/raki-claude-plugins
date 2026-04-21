@@ -59,10 +59,17 @@ esac
 notebooklm generate mind-map -n "$NB_ID"
 notebooklm download mind-map -n "$NB_ID" "raw/{type}/{slug}/notebooklm/mindmap.json" --force
 
-notebooklm generate report --format briefing-doc --wait -n "$NB_ID"
+# --hint 로 전달된 도메인 힌트는 briefing/study-guide 에만 적용
+# (mind-map CLI는 --append 미지원)
+APPEND_ARGS=()
+if [ -n "${DOMAIN_HINT:-}" ]; then
+  APPEND_ARGS=(--append "$DOMAIN_HINT")
+fi
+
+notebooklm generate report --format briefing-doc --wait -n "$NB_ID" "${APPEND_ARGS[@]}"
 notebooklm download report --latest -n "$NB_ID" "raw/{type}/{slug}/notebooklm/briefing.md" --force
 
-notebooklm generate report --format study-guide --wait -n "$NB_ID"
+notebooklm generate report --format study-guide --wait -n "$NB_ID" "${APPEND_ARGS[@]}"
 notebooklm download report --latest -n "$NB_ID" "raw/{type}/{slug}/notebooklm/study-guide.md" --force
 
 # 4. 노트북 삭제 (ID 추적 안 함)
