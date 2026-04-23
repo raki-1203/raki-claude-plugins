@@ -40,7 +40,34 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/weekly-report/scripts/collect_weekly.sh" \
 
 - `.repos`가 빈 배열이면 → "이번 주 기록된 활동이 없습니다" 메시지 + 파일 저장 없이 중단
 
-### 4. 요약 생성 (Task 6에서 채움)
+### 4. 요약 생성
+
+JSON `.repos` 배열을 순회하며 레포별로 아래를 수행:
+
+#### 4-A. 이번주 성과 bullet 생성
+
+입력: `.commits`, `.prs_done`, `.issues_closed`
+
+규칙:
+1. **PR 우선**: `prs_done` 각 PR → "PR 제목 (#번호)" 형태로 bullet 하나. 머지된 건 일반 표기, close된 건 "[close] ..." 표기
+2. **중복 커밋 제거**: PR에 속한 커밋은 중복 bullet로 만들지 않음. PR의 URL/번호로부터 연관 커밋을 추정하거나, 커밋 subject가 PR title의 부분 집합이면 드롭 (완전 정확할 필요 없음 — 중복 인상만 피하면 됨)
+3. **직접 커밋 요약**: PR에 속하지 않은 커밋 중에서 아래는 드롭:
+    - `wip`, `WIP`, `fix typo`, `lint`, `chore: format`, `style:`로 시작, `Merge branch` 등 **의미 없는 메시지**
+    - subject가 10자 미만
+4. **남은 커밋**: 의미 단위로 묶어 1~2개 bullet로 요약 (많으면 핵심만). 예: `세션 관리 로직 / 에러 핸들링 / 테스트 추가` 3개 커밋을 "세션 관리 로직 구현" 한 bullet로 묶음
+5. **이슈**: `issues_closed` 각 항목 → "이슈 해결: 제목 (#번호)" bullet
+
+bullet이 하나도 안 나오면 이번주 성과 섹션은 "_(활동 기록 없음)_" 표기.
+
+#### 4-B. 다음주 계획 후보 bullet 생성
+
+입력: `.prs_open`, `.issues_open`
+
+규칙 (요약하지 않고 그대로 나열):
+- `prs_open` 각 PR → "[진행중] 제목 (#번호)" (`draft: true`면 "[초안] ...")
+- `issues_open` 각 이슈 → "[이슈] 제목 (#번호)"
+
+bullet 하나도 없으면 "_(미완료 항목 없음)_" 표기.
 
 ### 5. 마크다운 조립 (Task 7에서 채움)
 
