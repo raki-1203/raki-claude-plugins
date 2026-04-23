@@ -22,6 +22,35 @@ WEEK=$(date -j -f "%Y-%m-%d" "$UNTIL" +%G-W%V 2>/dev/null || date +%G-W%V)
 
 REPOS_JSON="[]"
 
+# gh 두 계정 토큰 로딩 (없어도 계속 진행, 해당 계정 레포만 skip됨)
+KT_TOKEN=$(gh auth token --user hr-son_ktopen 2>/dev/null || echo "")
+PERSONAL_TOKEN=$(gh auth token --user raki-1203 2>/dev/null || echo "")
+
+SKIPPED_JSON="[]"
+
+# 헬퍼: primary 토큰으로 먼저 시도, 실패 시 secondary
+# 인자: $1=owner $2=repo $3=subcommand(pr|issue) $4..=gh args
+gh_with_fallback() {
+  local owner=$1 repo=$2 sub=$3; shift 3
+
+  local primary secondary
+  case $owner in
+    raki-1203|heegene-msft|kimcy)
+      primary="$PERSONAL_TOKEN"; secondary="$KT_TOKEN" ;;
+    *)
+      primary="$KT_TOKEN"; secondary="$PERSONAL_TOKEN" ;;
+  esac
+
+  local result
+  if [ -n "$primary" ]; then
+    result=$(GH_TOKEN="$primary" gh "$sub" list -R "$owner/$repo" "$@" 2>/dev/null) && { echo "$result"; return 0; }
+  fi
+  if [ -n "$secondary" ]; then
+    result=$(GH_TOKEN="$secondary" gh "$sub" list -R "$owner/$repo" "$@" 2>/dev/null) && { echo "$result"; return 0; }
+  fi
+  return 1
+}
+
 for dir in "$ROOT"/*/; do
   [ -d "$dir/.git" ] || continue
 
@@ -49,6 +78,30 @@ for dir in "$ROOT"/*/; do
               map({sha: .[0][0:7], subject: .[1], date: .[2], branch: .[3]})')
   commits="${commits:-[]}"
 
+  # PR 수집 (search로 updated 기준 필터)
+  prs_raw=$(gh_with_fallback "$owner" "$repo" pr \
+    --author "@me" --state all \
+    --search "updated:>=$SINCE" \
+    --json number,title,body,state,mergedAt,isDraft,url 2>/dev/null) || {
+      SKIPPED_JSON=$(echo "$SKIPPED_JSON" | jq \
+        --arg name "$repo_name" --arg reason "gh access denied (both accounts)" \
+        '. + [{name: $name, reason: $reason}]')
+      continue
+    }
+  prs_raw="${prs_raw:-[]}"
+
+  prs_done=$(echo "$prs_raw" | jq '[.[] | select(.state == "MERGED" or .state == "CLOSED")]')
+  prs_open=$(echo "$prs_raw" | jq '[.[] | select(.state == "OPEN") | {number, title, draft: .isDraft}]')
+
+  # 이슈 수집
+  issues_raw=$(gh_with_fallback "$owner" "$repo" issue \
+    --assignee "@me" --state all \
+    --search "updated:>=$SINCE" \
+    --json number,title,state,closedAt,url 2>/dev/null || echo "[]")
+
+  issues_closed=$(echo "$issues_raw" | jq '[.[] | select(.state == "CLOSED")]')
+  issues_open=$(echo "$issues_raw"   | jq '[.[] | select(.state == "OPEN")]')
+
   # 활동 여부는 Task 4에서 종합 판단. 일단 커밋 데이터만 포함하여 누적.
   repo_json=$(jq -n \
     --arg name "$repo_name" \
@@ -56,9 +109,13 @@ for dir in "$ROOT"/*/; do
     --arg owner "$owner" \
     --arg me "$me_email" \
     --argjson commits "$commits" \
+    --argjson prs_done "$prs_done" \
+    --argjson prs_open "$prs_open" \
+    --argjson issues_closed "$issues_closed" \
+    --argjson issues_open "$issues_open" \
     '{name: $name, remote: $remote, owner: $owner, me: $me,
-      commits: $commits, prs_done: [], prs_open: [],
-      issues_closed: [], issues_open: []}')
+      commits: $commits, prs_done: $prs_done, prs_open: $prs_open,
+      issues_closed: $issues_closed, issues_open: $issues_open}')
 
   REPOS_JSON=$(echo "$REPOS_JSON" | jq --argjson r "$repo_json" '. + [$r]')
 done
@@ -66,5 +123,6 @@ done
 jq -n \
   --arg since "$SINCE" --arg until "$UNTIL" --arg week "$WEEK" \
   --argjson repos "$REPOS_JSON" \
+  --argjson skipped "$SKIPPED_JSON" \
   '{since: $since, until: $until, week_number: $week,
-    repos: $repos, skipped_repos: []}'
+    repos: $repos, skipped_repos: $skipped}'
