@@ -3,6 +3,13 @@
 # Usage: collect_weekly.sh [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--root <dir>]
 set -euo pipefail
 
+for tool in git gh jq yq; do
+  if ! command -v $tool >/dev/null 2>&1; then
+    echo "Error: '$tool' not installed. Run '/rakis:setup' or 'brew install $tool'." >&2
+    exit 2
+  fi
+done
+
 SINCE=""
 UNTIL=""
 ROOT="$PWD"
@@ -28,6 +35,21 @@ PERSONAL_TOKEN=$(gh auth token --user raki-1203 2>/dev/null || echo "")
 
 SKIPPED_JSON="[]"
 
+repo_count=$(find "$ROOT" -maxdepth 2 -type d -name ".git" | wc -l | tr -d ' ')
+
+if [ -d "$ROOT/.git" ]; then
+  # CWD 자체가 git 레포인 경우 (focus mode)
+  REPO_DIRS=("$ROOT")
+elif [ "$repo_count" -eq 0 ]; then
+  echo "Error: '$ROOT' 아래에 git 레포가 없습니다. workspace 루트에서 실행하세요." >&2
+  exit 3
+else
+  REPO_DIRS=()
+  for d in "$ROOT"/*/; do
+    [ -d "$d/.git" ] && REPO_DIRS+=("$d")
+  done
+fi
+
 # 헬퍼: primary 토큰으로 먼저 시도, 실패 시 secondary
 # 인자: $1=owner $2=repo $3=subcommand(pr|issue) $4..=gh args
 gh_with_fallback() {
@@ -51,9 +73,7 @@ gh_with_fallback() {
   return 1
 }
 
-for dir in "$ROOT"/*/; do
-  [ -d "$dir/.git" ] || continue
-
+for dir in "${REPO_DIRS[@]}"; do
   repo_name=$(basename "$dir")
   remote=$(git -C "$dir" remote get-url origin 2>/dev/null || echo "")
   [ -z "$remote" ] && continue  # 원격 없는 레포는 gh 조회 불가 → skip
@@ -116,6 +136,12 @@ for dir in "$ROOT"/*/; do
     '{name: $name, remote: $remote, owner: $owner, me: $me,
       commits: $commits, prs_done: $prs_done, prs_open: $prs_open,
       issues_closed: $issues_closed, issues_open: $issues_open}')
+
+  # 활동 없음 = 커밋 0 + PR 0 + 이슈 0 → 리포트에서 드롭
+  activity_count=$(echo "$repo_json" | jq '[.commits, .prs_done, .prs_open, .issues_closed, .issues_open] | map(length) | add')
+  if [ "$activity_count" -eq 0 ]; then
+    continue
+  fi
 
   REPOS_JSON=$(echo "$REPOS_JSON" | jq --argjson r "$repo_json" '. + [$r]')
 done
