@@ -266,7 +266,7 @@ Obsidian vault에 Karpathy 3-Layer 구조를 자동 생성.
 4. 터미널 출력 + `~/workspace/weekly-reports/YYYY-W##.md` 저장
 
 ## 요구사항
-`git`, `gh`, `jq` (없으면 `/rakis:setup` 실행)
+`git`, `gh`, `jq`, `yq` (없으면 `/rakis:setup` 실행)
 
 ## 트리거
 "/rakis:weekly-report" 명시 실행, "주간 보고서", "이번주 정리"
