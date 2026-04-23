@@ -50,6 +50,8 @@ command -v uv
 | `notebooklm-py` | `command -v notebooklm` | `uv tool install --upgrade notebooklm-py --with playwright` |
 | `node` | `command -v node` | `brew upgrade node 2>/dev/null \|\| brew install node` |
 | `gh` | `command -v gh` | `brew upgrade gh 2>/dev/null \|\| brew install gh` |
+| `jq` | `command -v jq` | `brew upgrade jq 2>/dev/null \|\| brew install jq` |
+| `yq` | `command -v yq` | `brew upgrade yq 2>/dev/null \|\| brew install yq` |
 | `graphify` | `command -v graphify` | `uv tool install --upgrade graphifyy --python 3.13 && graphify install` |
 
 > **graphify 패키지명 주의**: PyPI 패키지명은 `graphifyy` (오타 아님, y가 두 개), 설치 후 명령어는 `graphify` (y 한 개).
@@ -63,6 +65,8 @@ command -v uv
   notebooklm-py    ✓ (v1.2.3 → 최신 확인)
   node             ✓
   gh               ✓
+  jq               ✓
+  yq               ✓
   graphify         ✗   uv tool install --upgrade graphifyy --python 3.13
 ```
 
