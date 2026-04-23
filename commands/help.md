@@ -14,7 +14,7 @@ description: rakis 플러그인의 사용법을 안내합니다 (/rakis:help 또
 - **알 수 없는 이름** → "알 수 없는 스킬" + 사용 가능한 스킬 목록 제시
 
 인식하는 스킬명:
-- `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`
+- `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`, `weekly-report`
 - `setup`, `help`, `wc-cp-graph` (커맨드)
 
 ## 단계 A: 전체 개요 출력 (인자 없을 때)
@@ -54,6 +54,7 @@ Karpathy의 LLM Knowledge Base 방법론(3-Layer)으로 Obsidian vault에 지식
   wiki-wrap-up    — 세션 학습 저장 (코멘트 자동 생성)
   wiki-lint       — 건강 점검 + 풀 그래프 리빌드
   wiki-init       — vault 초기화 (프로젝트 폴더에서 실행)
+  weekly-report   — 주간 업무 보고서 초안 생성 (git/gh 기반)
 
 커맨드:
   /rakis:setup        — 의존성 설치 + 글로벌 CLAUDE.md 매핑
@@ -244,6 +245,31 @@ Obsidian vault에 Karpathy 3-Layer 구조를 자동 생성.
 
 ## 트리거
 "/wiki-init" 명시 실행, "위키 초기화"
+```
+
+### weekly-report
+
+```
+# weekly-report — 주간 업무 보고서
+
+## 용도
+매주 목요일 회의 전, 지난 7일 작업 내역을 자동 수집해서 정리된 보고서 초안 생성.
+
+## 사용법
+/rakis:weekly-report
+/rakis:weekly-report --since 2026-04-15 --until 2026-04-22
+
+## 동작
+1. 현재 디렉토리 아래 git 레포들을 순회
+2. 각 레포에서 본인 커밋/PR/이슈 수집 (기본 7일, --since/--until 옵션으로 조정 가능)
+3. 의미 단위로 묶어서 "이번주 성과" + "다음주 계획 후보" bullet 생성
+4. 터미널 출력 + `~/workspace/weekly-reports/YYYY-W##.md` 저장
+
+## 요구사항
+`git`, `gh`, `jq` (없으면 `/rakis:setup` 실행)
+
+## 트리거
+"/rakis:weekly-report" 명시 실행, "주간 보고서", "이번주 정리"
 ```
 
 ### setup

@@ -22,8 +22,9 @@
 | 새 지식을 위키에 저장 | `rakis:wiki-ingest` |
 | 세션 마무리 시 학습 기록 | `rakis:wiki-wrap-up` |
 | 위키 건강 점검 (주 1회) | `rakis:wiki-lint` |
-| 프로젝트 코드 구조 분석 | `/graphify` (graphify 자체 스킬, setup에서 자동 설치) |
 | vault 초기 세팅 (vault당 1회) | `rakis:wiki-init` |
+| 프로젝트 코드 구조 분석 | `/graphify` (graphify 자체 스킬, setup에서 자동 설치) |
+| 주간 업무 보고서 생성 | `rakis:weekly-report` |
 | 플러그인 사용법 안내 | `/rakis:help` |
 | 플러그인 의존성 설치 (최초 1회) | `rakis:setup` |
 
