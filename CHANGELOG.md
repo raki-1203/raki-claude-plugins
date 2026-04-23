@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.0] — 2026-04-23
+
+### Added
+
+- `weekly-report` 스킬 추가. `/rakis:weekly-report [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--force]`로 CWD 아래 git 레포를 순회해 지난 7일간 본인 커밋/PR/이슈를 수집·요약하고, `~/workspace/weekly-reports/YYYY-W##.md`에 저장.
+- `skills/weekly-report/scripts/collect_weekly.sh`: 데이터 수집 스크립트. 다중 GitHub 계정(`hr-son_ktopen`/`raki-1203`)을 owner 기반 `GH_TOKEN` 우선순위 + fallback으로 자동 처리.
+- `/rakis:setup` 의존성 체크에 `jq`, `yq` 추가.
+
 ## [3.3.0] — 2026-04-21
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "raki-claude-plugins",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Personal Claude Code plugin collection by raki-1203",
   "type": "module",
   "license": "MIT",
