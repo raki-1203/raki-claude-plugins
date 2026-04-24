@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.5.0] — 2026-04-24
+
+### Changed (⚠️ BREAKING)
+
+- **Vault 경로 탐지 로직에서 iCloud default fallback 제거.** `OBSIDIAN_VAULT_PATH` 환경변수가 **필수**가 됐다. 미설정 시 모든 위키 스킬(`wiki-query`, `wiki-lint`, `wiki-ingest`, `wiki-wrap-up`, `source-fetch`)이 에러 메시지 출력 후 중단한다.
+  - **이유**: 기존에는 env 누락 시 하드코딩된 iCloud 경로로 silent fallback 되어, vault 위치를 옮긴 사용자(iCloud → Nextcloud/Dropbox/로컬) 가 알아차리지 못한 채 구경로에 쓰는 사고 가능성이 있었음. "fail fast, fail loud" 원칙으로 전환.
+  - **마이그레이션**: `~/.zshrc` 또는 `~/.bashrc` 에 `export OBSIDIAN_VAULT_PATH="$HOME/your/vault/path"` 추가 후 `source ~/.zshrc`. 대부분 사용자는 이미 설정돼 있어 영향 없음.
+- `wiki-init` 스킬의 인터뷰 질문에서 "기본값 (iCloud Obsidian)" 문구 제거. 빈 입력 시 기본값으로 진행하지 않고 재질문.
+- `README.md` setup 섹션 수정: env 필수임을 명시.
+- `test.sh` 에서 `VAULT="${OBSIDIAN_VAULT_PATH:-...}"` 패턴 제거하고 env unset 시 명시적 실패.
+
 ## [3.4.1] — 2026-04-23
 
 ### Changed
