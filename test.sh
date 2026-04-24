@@ -177,7 +177,11 @@ test_source_analyze() {
 test_wiki() {
   echo "🔬 wiki 스킬 테스트 (ingest/query/lint)"
 
-  VAULT="${OBSIDIAN_VAULT_PATH:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault}"
+  if [ -z "$OBSIDIAN_VAULT_PATH" ]; then
+    fail "OBSIDIAN_VAULT_PATH 환경변수가 설정되지 않았습니다. ~/.zshrc 에 export OBSIDIAN_VAULT_PATH=\"\$HOME/path/to/your/Vault\" 추가 후 source ~/.zshrc"
+    return 1
+  fi
+  VAULT="$OBSIDIAN_VAULT_PATH"
 
   # Vault 접근 확인
   if [ -d "$VAULT" ]; then

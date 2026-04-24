@@ -9,7 +9,7 @@ raw에 수집된 소스 중 아직 위키에 반영되지 않은 것을 찾아 `
 
 ## Vault 경로 탐지
 
-source-fetch와 동일 순서 (`OBSIDIAN_VAULT_PATH` → iCloud → CLAUDE.md 검증).
+source-fetch와 동일 — `OBSIDIAN_VAULT_PATH` 환경변수 필수. 없으면 에러 메시지 출력 후 중단.
 
 ## 인자
 

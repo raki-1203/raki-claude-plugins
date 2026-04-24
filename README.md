@@ -118,15 +118,18 @@ make init
 
 전제조건: macOS, Homebrew. brew가 없으면 setup 시작 시 안내합니다.
 
-### 2. Obsidian Vault 경로
+### 2. Obsidian Vault 경로 (**필수**)
 
-Set your vault path as an environment variable:
+`OBSIDIAN_VAULT_PATH` 환경변수가 **반드시** 설정돼있어야 합니다. 미설정 시 스킬이 에러 메시지 출력 후 중단됩니다 (v3.5.0 부터 기본값 폴백 제거).
 
 ```bash
-export OBSIDIAN_VAULT_PATH="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault"
+# ~/.zshrc 또는 ~/.bashrc 에 추가 — 실제 vault 위치로 변경
+export OBSIDIAN_VAULT_PATH="$HOME/Nextcloud/Vault"
+# 또는: "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault"
+# 또는: "$HOME/Documents/Vault"
 ```
 
-Or the plugin will auto-detect the default iCloud path.
+추가 후 `source ~/.zshrc` 또는 새 터미널.
 
 ## Vault Structure (v3)
 

@@ -9,9 +9,20 @@ description: Use when the user wants to add an external source (URL, GitHub repo
 
 ## Vault 경로 탐지
 
-1. 환경변수 `OBSIDIAN_VAULT_PATH` 있으면 사용
-2. `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault`
-3. Vault `CLAUDE.md`에 "Three-Layer" 또는 "raw/" 언급 검증
+환경변수 `OBSIDIAN_VAULT_PATH` 가 **반드시** 설정돼있어야 한다.
+
+1. `OBSIDIAN_VAULT_PATH` 가 없으면 아래 메시지 출력 후 중단:
+
+   ```
+   ❌ OBSIDIAN_VAULT_PATH 환경변수가 설정되지 않았습니다.
+
+   ~/.zshrc 또는 ~/.bashrc 에 아래 줄을 추가하세요:
+     export OBSIDIAN_VAULT_PATH="$HOME/path/to/your/Vault"
+
+   추가 후 새 터미널을 열거나 `source ~/.zshrc` 실행.
+   ```
+
+2. 경로 존재 여부 확인 + Vault `CLAUDE.md` 에 "Three-Layer" 또는 "raw/" 언급이 있는지 검증. 실패 시 에러.
 
 ## 인자
 

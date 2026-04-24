@@ -45,12 +45,11 @@ license: MIT
 
 ```
 vault 경로를 입력하세요.
-기본값 (iCloud Obsidian): ~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault
-Enter = 기본값 사용
+예: ~/Nextcloud/Vault  /  ~/Documents/Vault  /  ~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault
 > _____
 ```
 
-입력이 있으면 `~` 확장, 절대 경로로 변환하여 `VAULT_PATH` 변수에 저장.
+**기본값 없음** — 빈 입력이면 재질문. 입력이 있으면 `~` 확장, 절대 경로로 변환하여 `VAULT_PATH` 변수에 저장.
 
 **질문 2: 역할**
 

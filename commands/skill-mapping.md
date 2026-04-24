@@ -7,7 +7,7 @@
 ## Obsidian LLM Wiki
 
 - **플러그인**: `rakis@raki-claude-plugins`
-- **Vault 경로**: `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Vault`
+- **Vault 경로**: `$OBSIDIAN_VAULT_PATH` 환경변수로 설정 (필수 — 미설정 시 스킬 에러)
 - **구조**: Karpathy 3-Layer (raw/ → wiki/ → schema)
 
 ### 스킬 사용 (필수)
