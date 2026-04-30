@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.5.1] — 2026-04-30
+
+### Changed
+
+- `wc-cp-graph` 커맨드 정리: tracked 파일(`CLAUDE.md`, `.claude/settings.json`) 복사 단계 제거.
+  - **이유**: 두 파일은 git에 tracked되어 있어 worktree 생성 시 브랜치에서 자동으로 함께 복사된다. 메인에서 덮어쓰면 브랜치별 차이가 사라지는 부작용이 있었음.
+  - 대신 `graphify` PreToolUse 훅이 들어있는 **gitignored** 파일 `.claude/settings.local.json` 복사 단계 추가.
+- 결과: worktree 생성 후 `/rakis:wc-cp-graph` 한 번이면 graphify 자동 사용 환경(`graphify-out/` + PreToolUse 훅)이 셋업됨.
+
 ## [3.5.0] — 2026-04-24
 
 ### Changed (⚠️ BREAKING)
