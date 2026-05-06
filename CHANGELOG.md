@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.5.2] — 2026-05-06
+
+### Fixed
+
+- `source-fetch` enrich 단계에서 대용량 repo(repomix.txt > 1.9MB)의 NotebookLM 업로드가 자동 분할되지 않던 문제 수정.
+  - 기존: `enrich.md` "실행 순서"는 단일 업로드만 시도. "대용량 소스 분할" 섹션은 별도 문서로 존재했지만 자동 분기 없음 → 2MB 초과 시 400 Bad Request.
+  - 수정: `repo` 분기에서 `stat`으로 사이즈 확인 → 1.9MB 초과 시 `split -b 1800k`로 자동 분할 + `.txt` 확장자 부여(NotebookLM "Unknown" 타입 회피) 후 순차 업로드.
+  - macOS/Linux 양쪽에서 동작하도록 `stat -f%z` / `stat -c%s` fallback.
+
 ## [3.5.1] — 2026-04-30
 
 ### Changed

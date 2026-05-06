@@ -36,8 +36,24 @@ notebooklm auth check --test 2>&1 | grep -q "Authentication is valid" || {
 NB_ID=$(notebooklm create "{slug}" --json | jq -r '.notebook.id')
 
 # 2. 소스 업로드 (유형별) — source add 는 파일 경로/URL 자동 감지
+#    repo의 경우 1.9MB 초과 시 자동 분할 (notebooklm 2MB 한도 + 마진)
 case "$TYPE" in
-  repo)   notebooklm source add "raw/repos/{slug}/repomix.txt" -n "$NB_ID" ;;
+  repo)
+    SRC="raw/repos/{slug}/repomix.txt"
+    SIZE=$(stat -f%z "$SRC" 2>/dev/null || stat -c%s "$SRC")
+    if [ "$SIZE" -gt 1900000 ]; then
+      PREFIX="/tmp/{slug}-part-"
+      split -b 1800k -a 2 -d "$SRC" "$PREFIX"
+      for p in "$PREFIX"*; do
+        # 확장자 없으면 NotebookLM이 "Unknown" 타입으로 인식 → .txt 부여
+        mv "$p" "$p.txt"
+        notebooklm source add "$p.txt" -n "$NB_ID"
+      done
+      rm "$PREFIX"*.txt
+    else
+      notebooklm source add "$SRC" -n "$NB_ID"
+    fi
+    ;;
   paper)  notebooklm source add "raw/papers/{slug}/source.pdf"  -n "$NB_ID" ;;
   article)
     if [ -n "$URL" ]; then
@@ -78,17 +94,14 @@ notebooklm delete -n "$NB_ID" -y
 
 > **언어 설정**: 출력 언어는 `notebooklm language set <code>` 로 계정 전체에 적용됨 (글로벌). `/rakis:setup` 단계 6 참조. 산출 호출마다 `--language` 플래그로 덮어쓰기도 가능.
 
-## 대용량 소스 분할
+## 대용량 소스 분할 (자동)
 
-repomix.txt가 2MB 초과 시 notebooklm이 400 에러. 분할 업로드:
+repomix.txt가 2MB 초과 시 notebooklm이 400 에러를 반환한다. 위 "실행 순서 step 2"의 `repo` 분기에서 `stat`으로 사이즈를 확인해 1.9MB 초과 시 자동으로 1.8MB 단위 분할 업로드한다.
 
-```bash
-split -b 1800k -a 2 -d "raw/repos/{slug}/repomix.txt" /tmp/{slug}-part-
-for p in /tmp/{slug}-part-*; do
-  notebooklm source add "$p" -n "$NB_ID"
-done
-rm /tmp/{slug}-part-*
-```
+**주의 사항**:
+- `split` 결과물은 확장자가 없어 NotebookLM이 "Unknown" 타입으로 인식 → 업로드 직전 `.txt`로 rename 필수
+- macOS는 `stat -f%z`, Linux는 `stat -c%s` (위 스크립트는 둘 다 fallback 처리)
+- 분할 업로드된 part는 노트북 안에서 별도 source로 표시되지만 NotebookLM이 통합 인덱싱한다
 
 ## Mock 모드 (CI/테스트용)
 
