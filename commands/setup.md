@@ -53,21 +53,28 @@ command -v uv
 | `jq` | `command -v jq` | `brew upgrade jq 2>/dev/null \|\| brew install jq` |
 | `yq` | `command -v yq` | `brew upgrade yq 2>/dev/null \|\| brew install yq` |
 | `graphify` | `command -v graphify` | `uv tool install --upgrade graphifyy --python 3.13 && graphify install` |
+| `whisper-ctranslate2` | `command -v whisper-ctranslate2` | `uv tool install --upgrade whisper-ctranslate2` |
+| `ffmpeg` | `command -v ffmpeg` | `brew upgrade ffmpeg 2>/dev/null \|\| brew install ffmpeg` |
 
 > **graphify 패키지명 주의**: PyPI 패키지명은 `graphifyy` (오타 아님, y가 두 개), 설치 후 명령어는 `graphify` (y 한 개).
 > **graphify install**: CLI 설치 후 `graphify install`을 실행하면 글로벌 스킬(`~/.claude/skills/graphify/SKILL.md`)이 등록되어 `/graphify` 명령으로 어디서든 사용 가능. 이미 설치돼 있으면 덮어쓰기(안전).
+>
+> **whisper-ctranslate2**: faster-whisper의 공식 CLI wrapper. `meeting-digest` 스킬이 회의 녹음 전사에 사용. 첫 실행 시 large-v3 모델 ~3GB가 HuggingFace에서 자동 다운로드됨.
+> **ffmpeg**: 오디오/비디오 포맷 변환. mp4/mov 등 비디오 파일에서 오디오 추출 시 필요.
 
 결과를 다음 형식으로 출력하세요:
 
 ```
 [필수]
-  uv               ✓
-  notebooklm-py    ✓ (v1.2.3 → 최신 확인)
-  node             ✓
-  gh               ✓
-  jq               ✓
-  yq               ✓
-  graphify         ✗   uv tool install --upgrade graphifyy --python 3.13
+  uv                    ✓
+  notebooklm-py         ✓ (v1.2.3 → 최신 확인)
+  node                  ✓
+  gh                    ✓
+  jq                    ✓
+  yq                    ✓
+  graphify              ✗   uv tool install --upgrade graphifyy --python 3.13
+  whisper-ctranslate2   ✗   uv tool install --upgrade whisper-ctranslate2
+  ffmpeg                ✗   brew install ffmpeg
 ```
 
 모든 항목이 ✓이면 단계 3을 건너뛰고 단계 6으로 가세요. ("이미 모두 설치되어 있습니다" 출력 + 마커 생성)

@@ -14,7 +14,7 @@ description: rakis 플러그인의 사용법을 안내합니다 (/rakis:help 또
 - **알 수 없는 이름** → "알 수 없는 스킬" + 사용 가능한 스킬 목록 제시
 
 인식하는 스킬명:
-- `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`, `weekly-report`
+- `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`, `weekly-report`, `meeting-digest`
 - `setup`, `help`, `wc-cp-graph` (커맨드)
 
 ## 단계 A: 전체 개요 출력 (인자 없을 때)
@@ -55,6 +55,7 @@ Karpathy의 LLM Knowledge Base 방법론(3-Layer)으로 Obsidian vault에 지식
   wiki-lint       — 건강 점검 + 풀 그래프 리빌드
   wiki-init       — vault 초기화 (프로젝트 폴더에서 실행)
   weekly-report   — 주간 업무 보고서 초안 생성 (git/gh 기반)
+  meeting-digest  — 회의 녹음 → 전사 → 구조화된 회의록 (faster-whisper)
 
 커맨드:
   /rakis:setup        — 의존성 설치 + 글로벌 CLAUDE.md 매핑
@@ -272,6 +273,43 @@ Obsidian vault에 Karpathy 3-Layer 구조를 자동 생성.
 "/rakis:weekly-report" 명시 실행, "주간 보고서", "이번주 정리"
 ```
 
+### meeting-digest
+
+```
+# meeting-digest — 회의록 정리
+
+## 용도
+회의 녹음 파일(mp3/m4a/wav/mp4 등)을 받아 faster-whisper로 한국어 전사한 뒤
+LLM이 안건/논의/결정/액션/이슈로 구조화된 회의록을 생성, 프로젝트별로 vault에 저장.
+
+## 사용법
+/rakis:meeting-digest <audio-path> [옵션]
+
+옵션 (생략 시 인터랙티브 질문/자동 추정):
+  --project <name>           프로젝트명 (생략 시 기존 프로젝트 목록에서 선택)
+  --title "회의명"           회의 제목 (생략 시 파일명 기반 추정, 의미없으면 질문)
+  --date YYYY-MM-DD          회의 날짜 (기본: 파일 mtime 또는 오늘)
+  --model large-v3|medium    Whisper 모델 (기본: large-v3)
+  --attendees "이름1,이름2"  참석자 frontmatter
+
+## 동작
+1. OBSIDIAN_VAULT_PATH + 의존성 검증 (whisper-ctranslate2, ffmpeg)
+2. 원본 오디오를 raw/meetings/{project}/{date}-{slug}/audio.{ext}에 복사
+3. whisper-ctranslate2로 전사 → transcript.txt/.json/.srt
+4. LLM이 구조화 회의록(안건/논의/결정/액션/이슈) 작성
+5. wiki/meetings/{project}/{date}-{slug}.md에 저장
+6. wiki/projects/{project}.md 가 있으면 "## Meetings" 섹션에 링크 추가
+7. log.md 한 줄 기록
+
+## 요구사항
+`whisper-ctranslate2`, `ffmpeg` (없으면 `/rakis:setup` 실행)
+첫 실행 시 large-v3 모델 ~3GB 다운로드.
+
+## 트리거
+"/rakis:meeting-digest <파일> --project <name>" 명시 실행
+"회의 녹음 정리해줘", "회의록 만들어줘"
+```
+
 ### setup
 
 ```
@@ -284,6 +322,8 @@ rakis 플러그인이 필요로 하는 외부 도구를 설치하고, 글로벌 
 - uv (Python 도구 매니저, 전제조건)
 - notebooklm-py (NotebookLM CLI)
 - node, gh, graphify
+- whisper-ctranslate2 (faster-whisper CLI — meeting-digest용)
+- ffmpeg (오디오/비디오 변환)
 
 ## 사용법
 /rakis:setup
@@ -336,7 +376,7 @@ rakis 전체 또는 특정 스킬/커맨드의 사용법 출력.
 알 수 없는 이름: <입력>
 
 사용 가능한 스킬:
-  wiki-query, wiki-ingest, source-fetch, migrate-v3, wiki-wrap-up, wiki-lint, wiki-init
+  wiki-query, wiki-ingest, source-fetch, migrate-v3, wiki-wrap-up, wiki-lint, wiki-init, weekly-report, meeting-digest
 
 사용 가능한 커맨드:
   setup, help, wc-cp-graph

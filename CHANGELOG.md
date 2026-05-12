@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.6.0] — 2026-05-12
+
+### Added
+
+- **`meeting-digest` 스킬 추가**: 회의 녹음 파일을 받아 faster-whisper(`whisper-ctranslate2`)로 한국어 전사 후 LLM이 구조화된 회의록(안건/주요 논의/결정사항/액션 아이템/미해결 이슈)으로 정리해 Obsidian vault에 저장.
+  - 호출: `/rakis:meeting-digest <audio> --project <name> [--title ...] [--date ...] [--model large-v3|medium] [--attendees ...]`
+  - 저장 구조 (프로젝트별):
+    - `raw/meetings/{project}/{date}-{slug}/audio.{ext}` (원본 immutable)
+    - `raw/meetings/{project}/{date}-{slug}/transcript.{txt,json,srt}` (전사)
+    - `wiki/meetings/{project}/{date}-{slug}.md` (구조화 회의록)
+  - `wiki/projects/{project}.md` 가 있으면 "## Meetings" 섹션에 회의록 링크 자동 추가
+  - `transcribe.sh` 래퍼 스크립트로 whisper-ctranslate2 호출 (compute_type=int8, Apple Silicon 친화)
+- **`/rakis:setup` 의존성에 `whisper-ctranslate2`, `ffmpeg` 추가**. 첫 실행 시 large-v3 모델 ~3GB 다운로드됨을 안내.
+- **`/rakis:help` 에 meeting-digest 상세 블록 추가**.
+
 ## [3.5.2] — 2026-05-06
 
 ### Fixed
