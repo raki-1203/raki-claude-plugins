@@ -10,10 +10,6 @@
 - **`/rakis:help`, `SKILL.md` 문구를 mlx-whisper 기준으로 갱신** (SKILL version 1.0.0 → 1.1.0).
 - **회의록 frontmatter에 `title`/`type: meeting` 추가** (Phase 4 형식 + 작성 규칙). vault frontmatter 검증(title/type 필수) 통과.
 
-### Added
-
-- **STT 엔진 벤치 스크립트** `skills/meeting-digest/scripts/bench_stt.sh` + `bench_cer.py`. ct2 vs mlx(large-v3/turbo) 속도·RAM·CER 비교. mlx는 `/tmp/.stt-bench-venv`에 격리 설치.
-
 ## [3.6.0] — 2026-05-12
 
 ### Added
