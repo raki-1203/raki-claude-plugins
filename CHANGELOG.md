@@ -8,6 +8,7 @@
   - `transcribe.sh`: `mlx_whisper` 호출로 재작성. short name(large-v3, medium…) → `mlx-community` HF repo 자동 매핑. `--output-name transcript`로 `transcript.{txt,json,srt}` 직접 생성. `--compute-type` 인자는 하위호환용으로 받되 무시.
 - **`/rakis:setup` 의존성 `whisper-ctranslate2` → `mlx-whisper`** (`command -v mlx_whisper`, `uv tool install --upgrade mlx-whisper`).
 - **`/rakis:help`, `SKILL.md` 문구를 mlx-whisper 기준으로 갱신** (SKILL version 1.0.0 → 1.1.0).
+- **회의록 frontmatter에 `title`/`type: meeting` 추가** (Phase 4 형식 + 작성 규칙). vault frontmatter 검증(title/type 필수) 통과.
 
 ### Added
 

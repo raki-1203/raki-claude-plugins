@@ -194,6 +194,8 @@ exit code 처리:
 
 ````markdown
 ---
+title: "<회의 제목>"
+type: meeting
 description: "<한 줄 요약 — 회의의 핵심 결정/주제>"
 project: <project>
 date: YYYY-MM-DD
@@ -243,6 +245,7 @@ related: []
 ````
 
 ### 작성 규칙
+0. **frontmatter**: `title`은 회의 제목(본문 H1과 동일), `type`은 항상 `meeting` 고정. vault frontmatter 검증(title/type 필수)을 위해 누락 금지.
 1. **사실만 추출**: 전사문에 없는 내용 추가 금지. 추론은 명시("문맥상 ~로 보임").
 2. **액션 아이템**: 발화 문맥에서 "내가 할게요", "그건 X님이" 같은 단서로 담당자 추출. 불명확하면 "미정".
 3. **결정사항**: 합의된 것만. 논의만 되고 결정 안 된 건 "미해결 이슈"로.
