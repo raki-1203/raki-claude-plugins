@@ -1,7 +1,7 @@
 ---
 name: meeting-digest
-description: 회의 녹음 파일을 받아 faster-whisper로 전사하고 구조화된 회의록(안건/논의/결정/액션/이슈)으로 정리해서 Obsidian vault의 프로젝트별 폴더에 저장. '회의록 정리', '녹음 정리해줘'라고 할 때 사용.
-version: 1.0.0
+description: 회의 녹음 파일을 받아 mlx-whisper로 전사하고 구조화된 회의록(안건/논의/결정/액션/이슈)으로 정리해서 Obsidian vault의 프로젝트별 폴더에 저장. '회의록 정리', '녹음 정리해줘'라고 할 때 사용.
+version: 1.1.0
 license: MIT
 ---
 
@@ -22,7 +22,7 @@ license: MIT
 - `--project <name>`: 프로젝트명. 생략 시 vault의 기존 프로젝트 목록 보여주고 선택/신규 입력 받음
 - `--title "회의명"`: 회의 제목. 생략 시 파일명에서 추정 (의미없으면 사용자에게 확인)
 - `--date YYYY-MM-DD`: 회의 날짜. 기본값 = 오디오 파일의 mtime (없으면 오늘)
-- `--model <name>`: Whisper 모델. 기본 `large-v3`. 빠르게 보려면 `medium`
+- `--model <name>`: Whisper 모델. 기본 `large-v3` (Apple MLX). 보통 변경 불필요
 - `--attendees "이름1,이름2"`: 참석자 목록 (frontmatter에 기록)
 
 ## Vault 경로 검증
@@ -41,12 +41,12 @@ license: MIT
 ## Phase 0: 인자 검증 + 의존성 체크
 
 1. `<audio-path>` 존재 확인. 없으면 에러 후 중단.
-2. 의존성 체크 (`command -v whisper-ctranslate2`). 없으면:
+2. 의존성 체크 (`command -v mlx_whisper`). 없으면:
    ```
-   ❌ whisper-ctranslate2 미설치. /rakis:setup 실행 후 다시 시도하세요.
+   ❌ mlx_whisper 미설치. /rakis:setup 실행 후 다시 시도하세요.
    ```
    중단.
-3. `ffmpeg` 체크. 없으면 경고만 출력하고 진행 (대부분 포맷은 ctranslate2 내부에서 처리되지만, mp4/mov 등은 ffmpeg 필요할 수 있음).
+3. `ffmpeg` 체크. 없으면 경고만 출력하고 진행 (대부분 포맷은 mlx_whisper 내부에서 처리되지만, mp4/mov 등은 ffmpeg 필요할 수 있음).
 
 ### Phase 0-A: `--project` 인터랙티브 보완
 
@@ -184,7 +184,7 @@ exit code 처리:
 - `4` → 전사 실패 안내 후 raw/ 정리 여부 사용자에게 질문
 
 전사가 길어질 수 있음을 사전 안내:
-> ⏳ 전사 중... (대략 오디오 길이의 0.2~0.5배 소요)
+> ⏳ 전사 중... (Apple Silicon 기준 대략 오디오 길이의 0.1배 내외 소요)
 
 ## Phase 4: 구조화된 회의록 생성
 
@@ -297,7 +297,7 @@ related: []
 | `OBSIDIAN_VAULT_PATH` 미설정 | 안내 후 중단 |
 | `--project` 누락 | 사용 예시 출력 후 중단 |
 | 오디오 파일 없음 | 경로 확인 요청 |
-| whisper-ctranslate2 미설치 | `/rakis:setup` 안내 |
+| mlx_whisper 미설치 | `/rakis:setup` 안내 |
 | 전사 실패 (exit 4) | raw/ 보존 여부 사용자에게 묻고 중단 |
 | slug 빈 결과 | `--title` 명시 요청 |
 | 중복 wiki 파일 | overwrite/rename/cancel 질문 |

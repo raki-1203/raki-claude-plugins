@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.7.0] — 2026-06-09
+
+### Changed
+
+- **`meeting-digest` 전사 엔진을 `faster-whisper`(whisper-ctranslate2) → `mlx-whisper`(Apple MLX)로 교체**. M4 Pro 실측에서 동일 large-v3 가중치 기준 ~11.5배 빠름(180s 클립: 177.5s → 15.5s, RTF 0.99 → 0.086), RAM도 더 적고 품질 동급.
+  - `transcribe.sh`: `mlx_whisper` 호출로 재작성. short name(large-v3, medium…) → `mlx-community` HF repo 자동 매핑. `--output-name transcript`로 `transcript.{txt,json,srt}` 직접 생성. `--compute-type` 인자는 하위호환용으로 받되 무시.
+- **`/rakis:setup` 의존성 `whisper-ctranslate2` → `mlx-whisper`** (`command -v mlx_whisper`, `uv tool install --upgrade mlx-whisper`).
+- **`/rakis:help`, `SKILL.md` 문구를 mlx-whisper 기준으로 갱신** (SKILL version 1.0.0 → 1.1.0).
+
+### Added
+
+- **STT 엔진 벤치 스크립트** `skills/meeting-digest/scripts/bench_stt.sh` + `bench_cer.py`. ct2 vs mlx(large-v3/turbo) 속도·RAM·CER 비교. mlx는 `/tmp/.stt-bench-venv`에 격리 설치.
+
 ## [3.6.0] — 2026-05-12
 
 ### Added

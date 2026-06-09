@@ -1,8 +1,11 @@
 #!/bin/bash
-# meeting-digest 전사 래퍼 — whisper-ctranslate2 호출
+# meeting-digest 전사 래퍼 — mlx-whisper 호출 (Apple Silicon 네이티브)
 #
 # Usage:
-#   transcribe.sh --audio <path> --out-dir <dir> [--model large-v3] [--lang ko] [--compute-type int8]
+#   transcribe.sh --audio <path> --out-dir <dir> [--model large-v3] [--lang ko]
+#
+# --model: short name(large-v3, medium, small, base, tiny) 또는
+#          full HF repo("org/repo"). short name은 mlx-community repo로 매핑.
 #
 # 출력:
 #   <out-dir>/transcript.txt   (plain text)
@@ -11,7 +14,7 @@
 #
 # Exit codes:
 #   0  성공
-#   2  의존성 누락 (whisper-ctranslate2)
+#   2  의존성 누락 (mlx_whisper)
 #   3  오디오 파일 없음/읽기 실패
 #   4  전사 실패
 
@@ -19,7 +22,6 @@ set -e
 
 MODEL="large-v3"
 LANG="ko"
-COMPUTE_TYPE="int8"
 AUDIO=""
 OUT_DIR=""
 
@@ -29,18 +31,18 @@ while [ $# -gt 0 ]; do
     --out-dir)      OUT_DIR="$2"; shift 2 ;;
     --model)        MODEL="$2"; shift 2 ;;
     --lang)         LANG="$2"; shift 2 ;;
-    --compute-type) COMPUTE_TYPE="$2"; shift 2 ;;
+    --compute-type) shift 2 ;;  # 하위호환: mlx에선 무의미, 무시
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
 if [ -z "$AUDIO" ] || [ -z "$OUT_DIR" ]; then
-  echo "usage: transcribe.sh --audio <path> --out-dir <dir> [--model X] [--lang Y] [--compute-type Z]" >&2
+  echo "usage: transcribe.sh --audio <path> --out-dir <dir> [--model X] [--lang Y]" >&2
   exit 1
 fi
 
-if ! command -v whisper-ctranslate2 >/dev/null 2>&1; then
-  echo "❌ whisper-ctranslate2 미설치 — /rakis:setup 실행" >&2
+if ! command -v mlx_whisper >/dev/null 2>&1; then
+  echo "❌ mlx_whisper 미설치 — /rakis:setup 실행" >&2
   exit 2
 fi
 
@@ -49,38 +51,29 @@ if [ ! -f "$AUDIO" ]; then
   exit 3
 fi
 
+# short name → mlx-community HF repo 매핑 ("/" 포함 시 직접 지정으로 간주)
+case "$MODEL" in
+  */*) REPO="$MODEL" ;;
+  *)   REPO="mlx-community/whisper-${MODEL}-mlx" ;;
+esac
+
 mkdir -p "$OUT_DIR"
 
-echo "▶ 전사 시작 (model=$MODEL, lang=$LANG, compute=$COMPUTE_TYPE)"
+echo "▶ 전사 시작 (model=$MODEL → $REPO, lang=$LANG)"
 echo "  오디오: $AUDIO"
 echo "  출력:   $OUT_DIR"
-echo "  (large-v3 첫 실행 시 모델 다운로드 ~3GB 소요)"
+echo "  (모델 첫 실행 시 HuggingFace에서 자동 다운로드 ~3GB 소요)"
 
-# whisper-ctranslate2는 입력 파일명을 기준으로 출력 파일을 만든다.
-# 일관된 이름(transcript.*)을 위해 임시 디렉터리에 처리 후 rename.
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
-
-AUDIO_BASE=$(basename "$AUDIO")
-AUDIO_STEM="${AUDIO_BASE%.*}"
-
-whisper-ctranslate2 \
+# mlx_whisper는 --output-name 으로 출력 파일명을 직접 지정 → transcript.* 로 바로 생성
+mlx_whisper \
   "$AUDIO" \
-  --model "$MODEL" \
+  --model "$REPO" \
   --language "$LANG" \
-  --compute_type "$COMPUTE_TYPE" \
-  --output_dir "$TMP_DIR" \
-  --output_format all \
+  --output-dir "$OUT_DIR" \
+  --output-name transcript \
+  --output-format all \
   --verbose False \
   || { echo "❌ 전사 실패" >&2; exit 4; }
-
-# 결과 파일을 transcript.* 로 정규화
-for ext in txt json srt vtt tsv; do
-  src="$TMP_DIR/$AUDIO_STEM.$ext"
-  if [ -f "$src" ]; then
-    cp "$src" "$OUT_DIR/transcript.$ext"
-  fi
-done
 
 if [ ! -f "$OUT_DIR/transcript.txt" ]; then
   echo "❌ transcript.txt 생성 실패" >&2
