@@ -65,6 +65,12 @@ echo "  출력:   $OUT_DIR"
 echo "  (모델 첫 실행 시 HuggingFace에서 자동 다운로드 ~3GB 소요)"
 
 # mlx_whisper는 --output-name 으로 출력 파일명을 직접 지정 → transcript.* 로 바로 생성
+#
+# 무음 구간 hallucination(같은 문구 무한 반복) stuck-loop 방지 옵션:
+#   --condition-on-previous-text False : 이전 출력에 condition 안 해 반복 전파 차단
+#   --hallucination-silence-threshold 2 : 무음 2초↑ 구간의 hallucination 억제
+#   --no-speech-threshold 0.6 / --compression-ratio-threshold 2.0 : 무음/반복 세그먼트 컷
+# (긴 회의·발화 드문 녹음에서 1문장 무한반복으로 전사가 통째로 손상되는 것을 막음)
 mlx_whisper \
   "$AUDIO" \
   --model "$REPO" \
@@ -72,6 +78,10 @@ mlx_whisper \
   --output-dir "$OUT_DIR" \
   --output-name transcript \
   --output-format all \
+  --condition-on-previous-text False \
+  --hallucination-silence-threshold 2 \
+  --no-speech-threshold 0.6 \
+  --compression-ratio-threshold 2.0 \
   --verbose False \
   || { echo "❌ 전사 실패" >&2; exit 4; }
 
