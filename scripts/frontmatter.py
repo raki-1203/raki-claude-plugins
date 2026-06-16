@@ -12,8 +12,16 @@ from pathlib import Path
 VALID_TYPES = {
     "source-summary", "project", "concept",
     "entity", "comparison", "index",
+    "meeting", "deliverable",
 }
 REQUIRED = ["title", "type", "sources", "related", "created", "updated", "description"]
+# type별 필수 필드 오버라이드. 없는 type은 REQUIRED(기본)를 따른다.
+REQUIRED_BY_TYPE = {
+    # 회의록: meeting-digest 템플릿 기준 (date 사용, updated/sources 없음)
+    "meeting": ["title", "type", "description", "date"],
+    # 산출물: owner/status/version 스키마 기준
+    "deliverable": ["title", "type", "status"],
+}
 
 FM_PATTERN = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 
@@ -41,10 +49,11 @@ def validate(path: Path) -> list[str]:
     errs: list[str] = []
     if "confidence" in fm:
         errs.append(f"{path}: confidence field is removed in v3")
-    for key in REQUIRED:
+    t = fm.get("type", "")
+    required = REQUIRED_BY_TYPE.get(t, REQUIRED)
+    for key in required:
         if key not in fm:
             errs.append(f"{path}: missing required field '{key}'")
-    t = fm.get("type", "")
     if t and t not in VALID_TYPES:
         errs.append(f"{path}: invalid type '{t}' (expected one of {sorted(VALID_TYPES)})")
     return errs
