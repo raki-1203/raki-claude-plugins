@@ -23,12 +23,14 @@ source-fetch와 동일 — `OBSIDIAN_VAULT_PATH` 환경변수 필수. 없으면 
 ## Phase 0: 미처리 소스 탐지
 
 ```bash
-# 1. 전수 스캔
-find "$VAULT/raw" -name "meta.json" -type f
+# 1. 전수 스캔 (meetings 제외 — raw/meetings/는 meeting-digest가 wiki/meetings/로 처리)
+find "$VAULT/raw" -name "meta.json" -type f -not -path "*/meetings/*"
 
 # 2. 각 meta.json마다 slug 추출 → wiki/sources/{slug}.md 존재 확인
 # 존재하지 않으면 "미처리"로 분류
 ```
+
+> `raw/meetings/**`는 wiki-ingest 대상이 아니다. 회의록은 `/rakis:meeting-digest`가 `wiki/meetings/{org}/{slug}.md`로 컴파일하므로, 여기서 스캔하면 `wiki/sources/`에 없어 매번 미처리로 오탐된다.
 
 `--full` 플래그 있으면 기존 `wiki/sources/*` 페이지를 삭제하고 전체를 미처리로 취급(단, `index.md`·`overview.md`·`log.md`·`projects/`·`concepts/`·`entities/`는 보존).
 
