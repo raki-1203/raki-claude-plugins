@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.9.0] — 2026-07-13
+
+### Added
+
+- **`meeting-digest` 화자 분리(diarization) 추가** — 회의록에 "누가 말했는지" 실제 화자 라벨을 붙임 (기존엔 문맥 추측만 가능).
+  - `scripts/diarize.py`: pyannote.audio 4.x(`pyannote/speaker-diarization-community-1`)로 화자 구간 추출 → `transcript.json` 세그먼트와 시간 겹침으로 라벨 배정 → `transcript.speakers.{txt,json}` 생성. `--self-check`로 배정 로직 단위검증.
+  - `scripts/diarize.sh`: 격리 venv(`~/.local/share/rakis/diarize-venv`) 호출 wrapper. venv 없음 → exit 2, 토큰 없음 → exit 5.
+  - 격리 venv(Python 3.12)에 pyannote 설치 — 시스템 mlx_whisper(3.14) 환경과 분리. torchcodec/ffmpeg 버전 불일치는 ffmpeg CLI→soundfile waveform 직접 로드로 우회(pyannote 공식 권장 경로).
+  - `SKILL.md`(1.2.0 → 1.3.0): Phase 3.5 화자 분리 단계. venv+HF 토큰 있으면 **자동 실행**, 없으면 조용히 건너뜀(회의록은 정상 생성). `--speakers N`(화자 수 힌트)·`--no-diarize` 옵션. Phase 4는 `transcript.speakers.txt` 우선 사용.
+  - `/rakis:setup` 단계 6.5: 화자 분리 venv 설정(선택, opt-in) + HF 토큰/gated 모델 약관 동의 안내.
+
 ## [3.7.0] — 2026-06-09
 
 ### Changed

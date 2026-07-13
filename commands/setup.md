@@ -157,6 +157,56 @@ mindmap/briefing/study-guide가 이 언어로 생성됩니다.
 
 > **주의**: `language`는 NotebookLM 계정의 GLOBAL 설정이라 모든 노트북에 적용됨. 여기서 한 번 `ko`로 맞춰두면 이후 source-fetch enrich 산출물이 한국어로 생성됨.
 
+## 단계 6.5: 화자 분리(diarization) venv — 선택
+
+`meeting-digest`의 화자 분리(누가 말했는지 라벨링)에 쓰이는 격리 venv. **선택 사항**이며
+용량이 크고(torch 포함 ~2GB) gated 모델 이용약관 동의가 필요하므로 **사용자에게 물어본 뒤** 진행.
+
+먼저 이미 있는지 확인:
+
+```bash
+DIA_VENV="$HOME/.local/share/rakis/diarize-venv"
+[ -x "$DIA_VENV/bin/python" ] && "$DIA_VENV/bin/python" -c "import pyannote.audio" 2>/dev/null \
+  && echo "화자 분리 venv 준비됨 ✓" || echo "화자 분리 venv 없음"
+```
+
+- **이미 준비됨** → "화자 분리: 준비됨 ✓" 출력하고 단계 7로
+- **없으면** → 사용자에게 묻고 대기:
+
+```
+회의록 화자 분리(누가 말했는지)를 설정할까요?
+  - 격리 venv 생성 + pyannote.audio 설치 (torch 포함 ~2GB 다운로드)
+  - HuggingFace 토큰 + gated 모델 약관 동의 필요 (아래 안내)
+설정 안 해도 회의록은 정상 생성됩니다(화자 라벨만 없음).
+
+[y] 설정  [n] 건너뛰기
+```
+
+- **[n]** → 건너뛰기 (마커 생성에 영향 없음)
+- **[y]** → 아래 실행:
+
+```bash
+DIA_VENV="$HOME/.local/share/rakis/diarize-venv"
+uv venv --python 3.12 "$DIA_VENV"
+uv pip install --python "$DIA_VENV/bin/python" "pyannote.audio>=4.0" soundfile
+"$DIA_VENV/bin/python" -c "import pyannote.audio, soundfile; print('pyannote', pyannote.audio.__version__, 'OK')"
+```
+
+설치 성공 후 **HF 토큰 안내** 출력 (자동화 불가 — 사용자가 직접):
+
+> 화자 분리 모델은 gated입니다. 다음을 직접 해주세요:
+> 1. https://hf.co/pyannote/speaker-diarization-community-1 접속 → 이용약관 동의(Agree)
+> 2. https://hf.co/settings/tokens 에서 read 토큰 생성
+> 3. 토큰을 환경변수로 등록 (`~/.zshrc`에 추가 후 `source ~/.zshrc`):
+>    ```
+>    export HF_TOKEN="hf_xxxxxxxx"
+>    ```
+>
+> 이후 `/rakis:meeting-digest`가 자동으로 화자 분리를 수행합니다.
+
+> **주의**: Python 3.12로 격리하는 이유 — mlx_whisper 시스템 환경(3.14)과 분리해 충돌 방지.
+> torchcodec가 시스템 ffmpeg 버전과 안 맞아도 diarize.py가 waveform 직접 로드로 우회하므로 문제 없음.
+
 ## 단계 7: 글로벌 CLAUDE.md에 스킬 매핑 추가
 
 글로벌 CLAUDE.md(`~/.claude/CLAUDE.md`)에 rakis 스킬 매핑이 이미 있는지 확인:

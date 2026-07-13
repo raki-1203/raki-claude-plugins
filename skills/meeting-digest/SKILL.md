@@ -1,7 +1,7 @@
 ---
 name: meeting-digest
 description: 회의 녹음 파일을 받아 mlx-whisper로 전사하고 구조화된 회의록(안건/논의/결정/액션/이슈)으로 정리해서 Obsidian vault의 프로젝트별 폴더에 저장. '회의록 정리', '녹음 정리해줘'라고 할 때 사용.
-version: 1.2.0
+version: 1.3.0
 license: MIT
 ---
 
@@ -24,6 +24,8 @@ license: MIT
 - `--date YYYY-MM-DD`: 회의 날짜. 기본값 = 오디오 파일의 mtime (없으면 오늘)
 - `--model <name>`: Whisper 모델. 기본 `large-v3` (Apple MLX). 보통 변경 불필요
 - `--attendees "이름1,이름2"`: 참석자 목록 (frontmatter에 기록)
+- `--speakers <N>`: 화자 수 힌트 (알면 지정 시 화자 분리 정확도↑). 생략 시 자동 추정
+- `--no-diarize`: 화자 분리 건너뛰기. 기본은 diarize venv+HF 토큰이 있으면 자동 실행
 
 ## Vault 경로 검증
 
@@ -186,9 +188,43 @@ exit code 처리:
 전사가 길어질 수 있음을 사전 안내:
 > ⏳ 전사 중... (Apple Silicon 기준 대략 오디오 길이의 0.1배 내외 소요)
 
+## Phase 3.5: 화자 분리 (diarization, 조건부 자동)
+
+`transcript.json`에 **누가 말했는지** 화자 라벨을 붙인다. pyannote(격리 venv) 사용.
+회의록의 "누가 무슨 입장이었는지"를 추측이 아닌 실제 화자 구간으로 채우기 위함.
+
+**실행 조건** (아래를 모두 만족할 때만 자동 실행. 하나라도 안 되면 **조용히 건너뜀** — 에러 아님):
+1. `--no-diarize` 플래그가 없음
+2. diarize venv 존재: `~/.local/share/rakis/diarize-venv/bin/python`
+3. HF 토큰 존재: env `HF_TOKEN`/`HUGGINGFACE_TOKEN` 또는 `~/.cache/huggingface/token`
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/skills/meeting-digest/scripts/diarize.sh" \
+  --audio "$RAW_DIR/audio.$EXT" \
+  --transcript-json "$RAW_DIR/transcript.json" \
+  --out-dir "$RAW_DIR" \
+  ${SPEAKERS:+--num-speakers "$SPEAKERS"}
+```
+
+산출물 (성공 시):
+- `$RAW_DIR/transcript.speakers.txt` — `[화자1] … [화자2] …` 블록
+- `$RAW_DIR/transcript.speakers.json` — 세그먼트별 speaker 라벨 + 타임스탬프
+
+exit code 처리 (전사와 달리 **실패해도 중단하지 않음** — 화자 없는 회의록으로 진행):
+- `0` → 화자 분리 성공. Phase 4에서 speakers 파일 사용
+- `2` (venv 없음) / `5` (토큰 없음) → 한 줄 안내 후 건너뜀:
+  > ℹ️ 화자 분리 건너뜀 (설정 안 됨). 활성화하려면: `/rakis:setup` + HF 토큰. 회의록은 화자 라벨 없이 생성됩니다.
+- `6` (모델 로드/실행 실패) → 한 줄 경고 후 건너뜀:
+  > ⚠️ 화자 분리 실패 (gated 모델 미동의 또는 네트워크). 화자 라벨 없이 진행. 상세: https://hf.co/pyannote/speaker-diarization-community-1
+- 그 외 → 건너뜀
+
+> 첫 실행 시 pyannote 모델(~수백 MB)이 HuggingFace에서 다운로드됨. 이후 캐시.
+
 ## Phase 4: 구조화된 회의록 생성
 
 `transcript.txt` 를 읽어 다음 구조로 마크다운 생성. **transcript.json의 타임스탬프**를 활용하면 발언 시점 인용 가능.
+
+**화자 분리 결과 우선 사용**: `transcript.speakers.txt`가 있으면 그것을 읽어라 (`[화자1]`/`[화자2]` 라벨 포함). 이 경우 "주요 논의"에서 누가 무슨 입장이었는지를 **추측이 아닌 실제 화자 라벨**로 쓴다. 단 화자1/화자2는 익명 라벨이므로, `--attendees`나 문맥(자기소개·호칭)으로 실제 이름과 매칭되면 이름으로 치환하고, 불확실하면 "화자1" 그대로 둔다. speakers 파일이 없으면 기존대로 `transcript.txt`로 진행(화자는 문맥 추정).
 
 **읽기 방식 (디테일 누락 방지)**: 전사가 길면(대략 4000단어 / 250줄 초과) 통째로 한 번에 요약하지 말 것. 처음부터 끝까지 순차적으로 읽으며 논의 단위마다 구체 디테일(수치·스펙·조건·발언자·제안)을 메모로 쌓은 뒤, 그 메모를 바탕으로 아래 구조를 채운다. 후반부를 스킵하면 회의 막판의 결정·액션이 통째로 누락되므로 끝까지 읽는다.
 
@@ -296,7 +332,8 @@ related: []
     ├ audio.<ext>     (<size>)
     ├ transcript.txt  (<word count> 단어)
     ├ transcript.json
-    └ transcript.srt
+    ├ transcript.srt
+    └ transcript.speakers.txt  (<N>명 화자 / 화자 분리 시에만)
 
 회의록 (wiki):
   wiki/meetings/<project>/<date>-<slug>.md
@@ -316,6 +353,7 @@ related: []
 | 오디오 파일 없음 | 경로 확인 요청 |
 | mlx_whisper 미설치 | `/rakis:setup` 안내 |
 | 전사 실패 (exit 4) | raw/ 보존 여부 사용자에게 묻고 중단 |
+| 화자 분리 미설정/실패 | 건너뛰고 화자 라벨 없이 회의록 생성 (중단 안 함) |
 | slug 빈 결과 | `--title` 명시 요청 |
 | 중복 wiki 파일 | overwrite/rename/cancel 질문 |
 
