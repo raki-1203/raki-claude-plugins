@@ -160,13 +160,13 @@ mindmap/briefing/study-guide가 이 언어로 생성됩니다.
 ## 단계 6.5: 화자 분리(diarization) venv — 선택
 
 `meeting-digest`의 화자 분리(누가 말했는지 라벨링)에 쓰이는 격리 venv. **선택 사항**이며
-용량이 크고(torch 포함 ~2GB) gated 모델 이용약관 동의가 필요하므로 **사용자에게 물어본 뒤** 진행.
+senko(Apple 네이티브 CoreML)를 쓴다. HF 토큰·약관 동의 불필요. **사용자에게 물어본 뒤** 진행.
 
 먼저 이미 있는지 확인:
 
 ```bash
 DIA_VENV="$HOME/.local/share/rakis/diarize-venv"
-[ -x "$DIA_VENV/bin/python" ] && "$DIA_VENV/bin/python" -c "import pyannote.audio" 2>/dev/null \
+[ -x "$DIA_VENV/bin/python" ] && "$DIA_VENV/bin/python" -c "import senko" 2>/dev/null \
   && echo "화자 분리 venv 준비됨 ✓" || echo "화자 분리 venv 없음"
 ```
 
@@ -175,8 +175,8 @@ DIA_VENV="$HOME/.local/share/rakis/diarize-venv"
 
 ```
 회의록 화자 분리(누가 말했는지)를 설정할까요?
-  - 격리 venv 생성 + pyannote.audio 설치 (torch 포함 ~2GB 다운로드)
-  - HuggingFace 토큰 + gated 모델 약관 동의 필요 (아래 안내)
+  - 격리 venv 생성 + senko 설치 (Apple 네이티브 CoreML, 모델 ~수십 MB)
+  - HF 토큰·약관 동의 불필요
 설정 안 해도 회의록은 정상 생성됩니다(화자 라벨만 없음).
 
 [y] 설정  [n] 건너뛰기
@@ -187,25 +187,18 @@ DIA_VENV="$HOME/.local/share/rakis/diarize-venv"
 
 ```bash
 DIA_VENV="$HOME/.local/share/rakis/diarize-venv"
-uv venv --python 3.12 "$DIA_VENV"
-uv pip install --python "$DIA_VENV/bin/python" "pyannote.audio>=4.0" soundfile
-"$DIA_VENV/bin/python" -c "import pyannote.audio, soundfile; print('pyannote', pyannote.audio.__version__, 'OK')"
+uv venv --python 3.13 "$DIA_VENV"
+uv pip install --python "$DIA_VENV/bin/python" senko
+"$DIA_VENV/bin/python" -c "import senko; print('senko OK')"
 ```
 
-설치 성공 후 **HF 토큰 안내** 출력 (자동화 불가 — 사용자가 직접):
+설치 성공 후 안내:
 
-> 화자 분리 모델은 gated입니다. 다음을 직접 해주세요:
-> 1. https://hf.co/pyannote/speaker-diarization-community-1 접속 → 이용약관 동의(Agree)
-> 2. https://hf.co/settings/tokens 에서 read 토큰 생성
-> 3. 토큰을 환경변수로 등록 (`~/.zshrc`에 추가 후 `source ~/.zshrc`):
->    ```
->    export HF_TOKEN="hf_xxxxxxxx"
->    ```
->
-> 이후 `/rakis:meeting-digest`가 자동으로 화자 분리를 수행합니다.
+> 화자 분리 준비 완료. 이후 `/rakis:meeting-digest`가 자동으로 화자 분리를 수행합니다.
+> (첫 실행 시 senko 모델 ~수십 MB 다운로드, 이후 캐시)
 
-> **주의**: Python 3.12로 격리하는 이유 — mlx_whisper 시스템 환경(3.14)과 분리해 충돌 방지.
-> torchcodec가 시스템 ffmpeg 버전과 안 맞아도 diarize.py가 waveform 직접 로드로 우회하므로 문제 없음.
+> **주의**: Python 3.13으로 격리하는 이유 — mlx_whisper 시스템 환경(3.14)과 분리해 충돌 방지.
+> Mac에서 senko는 CoreML로 동작하므로 torch/PyTorch·HF 토큰이 필요 없다.
 
 ## 단계 7: 글로벌 CLAUDE.md에 스킬 매핑 추가
 

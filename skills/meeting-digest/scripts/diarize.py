@@ -1,32 +1,24 @@
 #!/usr/bin/env python3
-"""meeting-digest 화자 분리(diarization) — pyannote.audio 4.x
+"""meeting-digest 화자 분리(diarization) — senko (Apple 네이티브 CoreML)
 
 전용 격리 venv(~/.local/share/rakis/diarize-venv)에서 실행된다. mlx_whisper 전사와
 분리된 별도 단계로, transcript.json 세그먼트에 화자 라벨을 붙인다.
 
 흐름:
-  1. ffmpeg CLI로 오디오 → 16kHz mono wav (torchcodec 우회)
-  2. soundfile로 waveform 로드 → pyannote에 dict로 직접 전달
-     (torchcodec가 시스템 ffmpeg 버전 불일치로 깨져서, pyannote 공식 우회 경로 사용)
-  3. pyannote/speaker-diarization-community-1 (gated) 파이프라인 실행
-  4. 화자 구간 ↔ transcript.json 세그먼트 시간 겹침으로 라벨 배정
-  5. transcript.speakers.json + transcript.speakers.txt 생성
+  1. ffmpeg CLI로 오디오 → 16kHz mono 16-bit wav (senko 입력 규격)
+  2. senko.Diarizer(device='auto')로 화자 구간 추출 (Mac=CoreML, HF 토큰 불필요)
+  3. 화자 구간 ↔ transcript.json 세그먼트 시간 겹침으로 라벨 배정
+  4. transcript.speakers.json + transcript.speakers.txt 생성
 
 Usage:
   diarize.py --audio <path> --transcript-json <path> --out-dir <dir>
-             [--num-speakers N] [--hf-token TOKEN]
   diarize.py --self-check      # ML 없이 배정 로직만 검증
-
-HF 토큰: --hf-token 또는 env HF_TOKEN / HUGGINGFACE_TOKEN.
-  gated 모델이라 https://hf.co/pyannote/speaker-diarization-community-1 에서
-  이용약관 동의 필요.
 
 Exit codes:
   0  성공
-  2  의존성 누락 (pyannote/soundfile/ffmpeg)
+  2  의존성 누락 (senko/ffmpeg)
   3  오디오/transcript 파일 문제
-  5  HF 토큰 없음
-  6  모델 로드/전사 실패 (gated 미동의·네트워크 등)
+  6  화자 분리 실패
 """
 import argparse
 import json
@@ -34,8 +26,6 @@ import os
 import subprocess
 import sys
 import tempfile
-
-MODEL = "pyannote/speaker-diarization-community-1"
 
 
 def eprint(*a):
@@ -46,7 +36,7 @@ def assign_speakers(segments, turns):
     """각 transcript 세그먼트에 시간 겹침이 가장 큰 화자 라벨을 배정.
 
     segments: [{"start","end","text",...}]
-    turns:    [(start, end, label)]  — pyannote 화자 구간
+    turns:    [(start, end, label)]  — senko 화자 구간
     반환: segments (각 dict에 "speaker" 추가; 겹침 없으면 None)
     """
     for seg in segments:
@@ -109,9 +99,10 @@ def _self_check():
 
 
 def ffmpeg_to_wav(audio, wav_path):
+    # senko 입력 규격: 16kHz mono 16-bit PCM
     subprocess.run(
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-         "-i", audio, "-ar", "16000", "-ac", "1", wav_path],
+         "-i", audio, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
         check=True,
     )
 
@@ -121,8 +112,6 @@ def main():
     ap.add_argument("--audio")
     ap.add_argument("--transcript-json")
     ap.add_argument("--out-dir")
-    ap.add_argument("--num-speakers", type=int, default=None)
-    ap.add_argument("--hf-token", default=None)
     ap.add_argument("--self-check", action="store_true")
     args = ap.parse_args()
 
@@ -134,11 +123,6 @@ def main():
         eprint("usage: diarize.py --audio X --transcript-json Y --out-dir Z")
         return 3
 
-    token = args.hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN")
-    if not token:
-        eprint("❌ HF 토큰 없음 (env HF_TOKEN 또는 --hf-token)")
-        return 5
-
     if not os.path.isfile(args.audio):
         eprint(f"❌ 오디오 없음: {args.audio}")
         return 3
@@ -147,9 +131,7 @@ def main():
         return 3
 
     try:
-        import soundfile as sf
-        import torch
-        from pyannote.audio import Pipeline
+        import senko
     except ImportError as e:
         eprint(f"❌ 의존성 누락: {e} — /rakis:setup 재실행")
         return 2
@@ -160,7 +142,7 @@ def main():
         eprint("❌ transcript.json에 segments 없음")
         return 3
 
-    # 오디오 → 16kHz mono wav → waveform 텐서 (torchcodec 우회)
+    # 오디오 → 16kHz mono 16-bit wav (senko 규격)
     with tempfile.TemporaryDirectory() as tmp:
         wav = os.path.join(tmp, "audio.16k.wav")
         try:
@@ -168,34 +150,17 @@ def main():
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             eprint(f"❌ ffmpeg 변환 실패: {e}")
             return 2
-        data, sr = sf.read(wav, dtype="float32", always_2d=True)  # (T, C)
-        waveform = torch.from_numpy(data.T)  # (C, T) = (1, T)
 
-        eprint(f"▶ 화자 분리 시작 (model={MODEL})")
+        eprint("▶ 화자 분리 시작 (senko, device=auto)")
         eprint("  (첫 실행 시 모델 다운로드 발생)")
         try:
-            pipeline = Pipeline.from_pretrained(MODEL, token=token)
-        except Exception as e:
-            eprint(f"❌ 파이프라인 로드 실패: {e}")
-            eprint(f"   gated 모델 이용약관 동의 확인: https://hf.co/{MODEL}")
-            return 6
-
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-        pipeline.to(torch.device(device))
-        eprint(f"  device={device}")
-
-        kw = {}
-        if args.num_speakers:
-            kw["num_speakers"] = args.num_speakers
-        try:
-            result = pipeline({"waveform": waveform, "sample_rate": sr}, **kw)
+            diarizer = senko.Diarizer(device="auto", warmup=False, quiet=True)
+            result = diarizer.diarize(wav, generate_colors=False)
         except Exception as e:
             eprint(f"❌ 화자 분리 실패: {e}")
             return 6
 
-    # pyannote 4.x는 결과를 래핑(.speaker_diarization), 3.x는 Annotation 직접
-    ann = getattr(result, "speaker_diarization", result)
-    turns = [(seg.start, seg.end, label) for seg, _, label in ann.itertracks(yield_label=True)]
+    turns = [(s["start"], s["end"], s["speaker"]) for s in result.get("merged_segments", [])]
     if not turns:
         eprint("⚠ 화자 구간 0개 — 배정 생략")
         return 6

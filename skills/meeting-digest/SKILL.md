@@ -1,7 +1,7 @@
 ---
 name: meeting-digest
 description: 회의 녹음 파일을 받아 mlx-whisper로 전사하고 구조화된 회의록(안건/논의/결정/액션/이슈)으로 정리해서 Obsidian vault의 프로젝트별 폴더에 저장. '회의록 정리', '녹음 정리해줘'라고 할 때 사용.
-version: 1.3.0
+version: 1.4.0
 license: MIT
 ---
 
@@ -24,8 +24,7 @@ license: MIT
 - `--date YYYY-MM-DD`: 회의 날짜. 기본값 = 오디오 파일의 mtime (없으면 오늘)
 - `--model <name>`: Whisper 모델. 기본 `large-v3` (Apple MLX). 보통 변경 불필요
 - `--attendees "이름1,이름2"`: 참석자 목록 (frontmatter에 기록)
-- `--speakers <N>`: 화자 수 힌트 (알면 지정 시 화자 분리 정확도↑). 생략 시 자동 추정
-- `--no-diarize`: 화자 분리 건너뛰기. 기본은 diarize venv+HF 토큰이 있으면 자동 실행
+- `--no-diarize`: 화자 분리 건너뛰기. 기본은 diarize venv가 있으면 자동 실행 (화자 수는 senko가 자동 추정)
 
 ## Vault 경로 검증
 
@@ -190,20 +189,18 @@ exit code 처리:
 
 ## Phase 3.5: 화자 분리 (diarization, 조건부 자동)
 
-`transcript.json`에 **누가 말했는지** 화자 라벨을 붙인다. pyannote(격리 venv) 사용.
-회의록의 "누가 무슨 입장이었는지"를 추측이 아닌 실제 화자 구간으로 채우기 위함.
+`transcript.json`에 **누가 말했는지** 화자 라벨을 붙인다. senko(Apple 네이티브 CoreML, 격리 venv) 사용.
+회의록의 "누가 무슨 입장이었는지"를 추측이 아닌 실제 화자 구간으로 채우기 위함. HF 토큰 불필요.
 
 **실행 조건** (아래를 모두 만족할 때만 자동 실행. 하나라도 안 되면 **조용히 건너뜀** — 에러 아님):
 1. `--no-diarize` 플래그가 없음
 2. diarize venv 존재: `~/.local/share/rakis/diarize-venv/bin/python`
-3. HF 토큰 존재: env `HF_TOKEN`/`HUGGINGFACE_TOKEN` 또는 `~/.cache/huggingface/token`
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/skills/meeting-digest/scripts/diarize.sh" \
   --audio "$RAW_DIR/audio.$EXT" \
   --transcript-json "$RAW_DIR/transcript.json" \
-  --out-dir "$RAW_DIR" \
-  ${SPEAKERS:+--num-speakers "$SPEAKERS"}
+  --out-dir "$RAW_DIR"
 ```
 
 산출물 (성공 시):
@@ -212,13 +209,13 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/meeting-digest/scripts/diarize.sh" \
 
 exit code 처리 (전사와 달리 **실패해도 중단하지 않음** — 화자 없는 회의록으로 진행):
 - `0` → 화자 분리 성공. Phase 4에서 speakers 파일 사용
-- `2` (venv 없음) / `5` (토큰 없음) → 한 줄 안내 후 건너뜀:
-  > ℹ️ 화자 분리 건너뜀 (설정 안 됨). 활성화하려면: `/rakis:setup` + HF 토큰. 회의록은 화자 라벨 없이 생성됩니다.
+- `2` (venv 없음) → 한 줄 안내 후 건너뜀:
+  > ℹ️ 화자 분리 건너뜀 (설정 안 됨). 활성화하려면: `/rakis:setup`. 회의록은 화자 라벨 없이 생성됩니다.
 - `6` (모델 로드/실행 실패) → 한 줄 경고 후 건너뜀:
-  > ⚠️ 화자 분리 실패 (gated 모델 미동의 또는 네트워크). 화자 라벨 없이 진행. 상세: https://hf.co/pyannote/speaker-diarization-community-1
+  > ⚠️ 화자 분리 실패. 화자 라벨 없이 진행.
 - 그 외 → 건너뜀
 
-> 첫 실행 시 pyannote 모델(~수백 MB)이 HuggingFace에서 다운로드됨. 이후 캐시.
+> 첫 실행 시 senko 모델(~수십 MB)이 다운로드됨. 이후 캐시.
 
 ## Phase 4: 구조화된 회의록 생성
 

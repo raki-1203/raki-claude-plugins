@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.10.0] — 2026-07-13
+
+### Changed
+
+- **`meeting-digest` 화자 분리 엔진을 pyannote.audio(PyTorch) → senko(Apple 네이티브 CoreML)로 교체**. HF 토큰·gated 모델 약관 동의가 사라져 활성화 장벽 제거, torch(~2GB) 대신 CoreML로 경량화, M3 기준 1시간 오디오 ~7.7초로 대폭 빠름.
+  - `scripts/diarize.py`: `senko.Diarizer(device='auto')` 사용으로 재작성. merge 로직(`assign_speakers`/`relabel`/`to_speaker_text`)은 그대로 유지 — senko `merged_segments`(`SPEAKER_01` 문자열)를 시간 겹침으로 `transcript.json` 세그먼트에 배정. ffmpeg는 16kHz mono **16-bit** wav로 변환(senko 입력 규격). torch/soundfile 의존성 제거. HF 토큰 로직(exit 5)·`--num-speakers`·`--hf-token` 인자 제거(senko는 화자 수 자동 추정).
+  - `scripts/diarize.sh`: `PYTORCH_ENABLE_MPS_FALLBACK` 제거(torch 미사용).
+  - `SKILL.md`(1.3.0 → 1.4.0): Phase 3.5 실행 조건에서 HF 토큰 요건 삭제(venv 존재만 확인). `--speakers` 옵션 제거. exit 5 처리 삭제.
+  - `/rakis:setup` 단계 6.5: `uv venv --python 3.13` + `uv pip install senko`로 변경, HF 토큰/gated 약관 안내 삭제.
+
 ## [3.9.0] — 2026-07-13
 
 ### Added
