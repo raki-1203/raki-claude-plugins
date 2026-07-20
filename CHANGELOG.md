@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.11.0] — 2026-07-21
+
+### Changed
+
+- **`source-fetch`가 SNS·랜딩페이지 첨부 이미지를 확인하도록 함**. WebFetch는 텍스트만 추출해 수익 인증 스크린샷·헤드라인 배너·계정 캡처 등 이미지 전용 정보(수치, 증거와 주장의 모순)를 놓치는 문제가 있었다.
+  - `references/fetchers.md`: "첨부 이미지 확인(SNS·랜딩페이지 필수)" 섹션 추가 — 이미지 존재 신호 확인 → Chrome 브라우저 자동화로 스크린샷 → `raw/{slug}/images/`에 저장 → `source.md`에 반영하는 절차 명시. 텍스트만으로 "콘텐츠 없음" 판단 금지.
+  - "LinkedIn / X (Twitter)" 섹션을 "LinkedIn / X (Twitter) / Threads / Facebook"으로 확장, `platform` 메타에 `threads`·`facebook` 추가.
+  - `SKILL.md` Phase 2 요약에 이미지 확인 필수 문구 추가.
+
 ## [3.10.0] — 2026-07-13
 
 ### Changed
