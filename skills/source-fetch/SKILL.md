@@ -61,7 +61,8 @@ slug는 `scripts/slug.sh`의 `rakis_slug` 함수로 정규화. `--slug` 인자�
 
 요약:
 - GitHub repo → `npx -y repomix --remote <url> --output raw/repos/{slug}/repomix.txt`
-- 웹/YouTube/LinkedIn/X → WebFetch 또는 notebooklm 소스 텍스트로 `raw/articles/{slug}/source.md`
+- 웹/YouTube/LinkedIn/X/Threads/Facebook → WebFetch 또는 notebooklm 소스 텍스트로 `raw/articles/{slug}/source.md`
+- **SNS·랜딩페이지는 텍스트만으로 끝내지 않는다** — 첨부 이미지(수익 인증, 헤드라인 배너, 계정 캡처 등)를 브라우저 스크린샷으로 확인해 `images/`에 저장하고 `source.md`에 반영. 상세: `references/fetchers.md`의 "첨부 이미지 확인" 섹션
 - PDF → 다운로드하여 `raw/papers/{slug}/source.pdf`
 - 로컬 파일 → `cp` 후 확장자 유지
 
