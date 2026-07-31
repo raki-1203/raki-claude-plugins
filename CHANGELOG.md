@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.13.0] — 2026-07-31
+
+### Removed
+
+- **NotebookLM enrich에서 `study-guide`·`mindmap` 생성 제거. briefing만 남긴다.** vault 실측(raw 소스 108개 / enrich 72개) 근거:
+
+  | 산출물 | 생성 | 위키가 인용 | 판정 |
+  |--------|-----:|-----------:|------|
+  | briefing | 73 | 23 (32%) | 유지 |
+  | study-guide | 73 | 21 (29%) | 제거 |
+  | mindmap | 73 | 11 (15%) | 제거 |
+
+  - **study-guide**: 분량의 **35.6%가 퀴즈(18.8%)와 서술형 질문(16.8%)** — 학습 장치지 위키 콘텐츠가 아니다. 26.7%는 briefing과 중복이고, 고유하게 쓸모 있는 건 용어 사전 21.2%뿐이었다.
+  - **mindmap**: 어휘의 41%가 briefing에 없어 정보 자체는 중복이 아니다. 다만 인용률 15%로 워크플로에 읽는 단계가 없었다. 정보가 있어도 소비되지 않으면 비용만 남는다.
+  - 참고로 **enrich 유무는 위키 페이지 품질을 가르지 못했다** (평균 3,210자 vs 3,113자, enrich 없는 `multica-ai-multica`가 상위권 / enrich 있는 `talecoco-com`이 하위권). briefing을 남긴 이유는 "품질을 올려서"가 아니라, 수백만 토큰 repomix에서 직접 읽어선 못 건질 사실(9-Wave 파이프라인·-15 LUFS·`ClipChannelGroupVectorSerializer` 등)을 뽑아주기 때문이다.
+  - 부수 효과: 소스당 NotebookLM 생성 호출이 3회 → 1회로 줄어 수집 시간이 짧아진다.
+
+### Changed
+
+- `wiki-ingest`: 소스 페이지 작성 절차에서 study-guide 기반 "연관 질문" 섹션 제거. 과거 수집분에 남아 있는 산출물은 참고 가능하다고 명시.
+- `source-fetch`: `--hint`는 이제 briefing에만 적용(mind-map `--append` 미지원 관련 주석 삭제). Mock 모드도 briefing 스텁만 생성.
+
 ## [3.12.0] — 2026-07-31
 
 ### Removed

@@ -64,19 +64,11 @@ case "$TYPE" in
     ;;
 esac
 
-# 3. 산출물 생성 + 다운로드 (generate → download 2단계)
-#
-#    - mind-map  → JSON 파일 (mindmap.json)
-#    - briefing  → report --format briefing-doc → markdown
-#    - study-guide → report --format study-guide → markdown
+# 3. briefing 생성 + 다운로드 (generate → download 2단계)
 #
 #    report 산출물은 노트북에 여러 개 존재할 수 있으므로 생성 직후 --latest 로 받는다.
 
-notebooklm generate mind-map -n "$NB_ID"
-notebooklm download mind-map -n "$NB_ID" "raw/{type}/{slug}/notebooklm/mindmap.json" --force
-
-# --hint 로 전달된 도메인 힌트는 briefing/study-guide 에만 적용
-# (mind-map CLI는 --append 미지원)
+# --hint 로 전달된 도메인 힌트를 주입
 APPEND_ARGS=()
 if [ -n "${DOMAIN_HINT:-}" ]; then
   APPEND_ARGS=(--append "$DOMAIN_HINT")
@@ -85,12 +77,23 @@ fi
 notebooklm generate report --format briefing-doc --wait -n "$NB_ID" "${APPEND_ARGS[@]}"
 notebooklm download report --latest -n "$NB_ID" "raw/{type}/{slug}/notebooklm/briefing.md" --force
 
-notebooklm generate report --format study-guide --wait -n "$NB_ID" "${APPEND_ARGS[@]}"
-notebooklm download report --latest -n "$NB_ID" "raw/{type}/{slug}/notebooklm/study-guide.md" --force
-
 # 4. 노트북 삭제 (ID 추적 안 함)
 notebooklm delete -n "$NB_ID" -y
 ```
+
+> **왜 briefing만 만드는가** (2026-07-31, 실측 기반)
+>
+> 이전에는 briefing·study-guide·mindmap 3종을 만들었다. vault 실측 결과:
+>
+> | 산출물 | 생성 | 위키가 인용 | 판정 |
+> |--------|-----:|-----------:|------|
+> | briefing | 73 | 23 (32%) | **유지** |
+> | study-guide | 73 | 21 (29%) | 제거 |
+> | mindmap | 73 | 11 (15%) | 제거 |
+>
+> - **study-guide**: 분량의 35.6%가 퀴즈(18.8%)와 서술형 질문(16.8%)이다. 학습 장치지 위키 콘텐츠가 아니다. 나머지도 26.7%는 briefing과 중복이고, 고유하게 쓸모 있는 건 용어 사전 21.2%뿐이었다.
+> - **mindmap**: 어휘의 41%가 briefing에 없어 정보 자체는 중복이 아니다. 그러나 인용률 15%로 워크플로에 읽는 단계가 없었다. 정보가 있어도 소비되지 않으면 비용만 남는다.
+> - enrich 유무는 위키 페이지 품질을 가르지 못했다 (평균 3,210자 vs 3,113자). 결정 변수는 소스 밀도와 작성 노력이다. briefing을 남긴 건 "enrich가 품질을 올려서"가 아니라, 대용량 repo(수백만 토큰 repomix)에서 직접 읽어선 못 건질 사실을 뽑아주기 때문이다.
 
 > **언어 설정**: 출력 언어는 `notebooklm language set <code>` 로 계정 전체에 적용됨 (글로벌). `/rakis:setup` 단계 6 참조. 산출 호출마다 `--language` 플래그로 덮어쓰기도 가능.
 
@@ -110,9 +113,7 @@ repomix.txt가 2MB 초과 시 notebooklm이 400 에러를 반환한다. 위 "실
 ```bash
 if [ "${RAKIS_NOTEBOOKLM_MOCK:-0}" = "1" ]; then
   mkdir -p "raw/{type}/{slug}/notebooklm"
-  echo '{"mock": "mindmap for {slug}"}' > "raw/{type}/{slug}/notebooklm/mindmap.json"
   echo "# Mock Briefing for {slug}" > "raw/{type}/{slug}/notebooklm/briefing.md"
-  echo "# Mock Study Guide for {slug}" > "raw/{type}/{slug}/notebooklm/study-guide.md"
   exit 0
 fi
 ```
