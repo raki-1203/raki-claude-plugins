@@ -45,6 +45,13 @@ command -v uv
 
 > 점검 결과를 대화가 끝날 때까지 기억해두세요 (예: `missing = [notebooklm-py, gh]`, `installed_already = [uv, node]`). 단계 7의 결과 요약에서 "새로 설치됨" vs "이미 있던 것"을 구분하려면 이 정보가 필요합니다.
 
+**설치 여부와 함께 현재 버전도 기록하세요** — 단계 2.5의 업그레이드 전후를 비교해 보고하려면 필요합니다.
+
+```bash
+notebooklm --version 2>/dev/null | tail -1
+uv tool list 2>/dev/null | grep -E "notebooklm-py|mlx-whisper"
+```
+
 | 도구 | 체크 명령 | 설치 명령 |
 |------|----------|----------|
 | `notebooklm-py` | `command -v notebooklm` | `uv tool install --upgrade notebooklm-py --with playwright` |
@@ -72,9 +79,23 @@ command -v uv
   ffmpeg                ✗   brew install ffmpeg
 ```
 
-모든 항목이 ✓이면 단계 3을 건너뛰고 단계 6으로 가세요. ("이미 모두 설치되어 있습니다" 출력 + 마커 생성)
+모든 항목이 ✓여도 **단계 2.5는 반드시 실행**하세요. 그 다음 단계 3을 건너뛰고 단계 6으로 갑니다.
 
-> **재실행 시 업데이트**: `/rakis:setup`을 재실행하면 이미 설치된 도구도 최신 버전으로 업그레이드합니다 (`--upgrade` 플래그). 새 맥 첫 설치뿐 아니라 기존 환경 업데이트에도 사용 가능.
+## 단계 2.5: uv tool 업그레이드 (항상 실행)
+
+**빠진 게 없어도 실행합니다.** 설치 여부만 보고 넘어가면 도구가 낡은 채로 방치되기 때문입니다.
+
+```bash
+uv tool upgrade --all
+```
+
+한 줄로 `notebooklm-py`·`mlx-whisper`를 모두 최신으로 올립니다. 이미 최신이면 아무것도 하지 않으므로 재실행이 안전합니다.
+
+업그레이드 후 버전을 다시 읽어 단계 9 요약에 `0.3.4 → 0.7.3` 형태로 표기하세요. 변화가 없으면 버전만 적습니다.
+
+> **brew 패키지(node·gh·jq·yq·ffmpeg)는 대상이 아닙니다.** 매번 `brew upgrade`를 돌리면 setup이 몇 분씩 걸립니다. 이들은 누락됐을 때만 설치하고, 갱신은 사용자의 평소 `brew upgrade`에 맡깁니다.
+
+> **왜 이 단계가 있는가** (2026-07-31 추가): `command -v`는 존재만 확인하고 버전을 보지 않습니다. `notebooklm-py` 0.3.4가 설치돼 있던 환경에서 Google이 NotebookLM 도메인을 옮겼는데, setup은 "✓ 설치됨"으로 통과시켜 4개 마이너 버전(0.3.4 → 0.7.3) 뒤처진 채 인증이 조용히 깨져 있었다. 존재 확인과 최신 확인은 다른 문제다.
 
 ## 단계 3: 사용자 선택
 
@@ -233,16 +254,21 @@ touch "${CLAUDE_PLUGIN_DATA}/.setup-done"
 === rakis:setup 완료 ===
 
 새로 설치됨:
-  ✓ notebooklm-py
   ✓ gh
 
-이미 있던 것:
+업그레이드됨:
+  ↑ notebooklm-py   0.3.4 → 0.7.3
+
+이미 최신:
   ✓ uv
+  ✓ mlx-whisper     0.4.3
   ✓ node
 
 다음에 할 일:
   ! notebooklm login
 ```
+
+`업그레이드됨` 항목이 있으면 **버전이 올라간 도구는 동작이 바뀌었을 수 있다**고 한 줄 덧붙이세요 — 특히 `notebooklm-py`는 CLI 출력 형식이 마이너 버전 사이에 바뀐 전례가 있습니다(0.7.3에서 `create` 출력에 `Tip:` 줄 추가).
 
 빠진 항목이 있다면 별도 표시. 마커 생성 여부도 명시. NotebookLM 언어 설정 결과도 포함 (예: `NotebookLM 언어: ko ✓` 또는 `NotebookLM 언어: 건너뜀 (인증 필요)`).
 

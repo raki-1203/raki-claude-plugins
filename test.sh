@@ -83,7 +83,10 @@ test_source_analyze() {
   else
     # 생성
     NB_OUTPUT=$(notebooklm create "테스트 노트북 $(date +%s)" 2>&1)
-    NB_ID=$(echo "$NB_OUTPUT" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+    # head -1 필수: 0.7.3의 create는 "Tip: ... run 'notebooklm use <id>'" 줄에도 UUID를 실어
+    # 보내므로 grep이 2줄을 뱉는다. 개행 낀 NB_ID로 use를 부르면 set -e가 스크립트를 죽여
+    # 정리 단계가 실행되지 않고 노트북이 고아로 남는다.
+    NB_ID=$(echo "$NB_OUTPUT" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
     if [ -n "$NB_ID" ]; then
       pass "노트북 생성: $NB_ID"
     else
