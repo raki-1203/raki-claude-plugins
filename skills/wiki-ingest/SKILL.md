@@ -42,8 +42,9 @@ find "$VAULT/raw" -name "meta.json" -type f -not -path "*/meetings/*"
 
 1. `raw/{type}/{slug}/source.md|source.pdf|repomix.txt` 읽기
 2. `raw/{type}/{slug}/notebooklm/briefing.md` 존재 시 핵심 요약 근거로 활용
-3. `raw/{type}/{slug}/notebooklm/study-guide.md` 존재 시 주요 질문 추출
-4. `wiki/sources/{slug}.md` 생성
+3. `wiki/sources/{slug}.md` 생성
+
+> 과거 수집분에는 `study-guide.md`·`mindmap.json`이 남아 있을 수 있다. 참고해도 되지만 **신규 수집에서는 더 이상 생성하지 않는다** (2026-07-31, source-fetch v3.13.0).
 
 Frontmatter (필수):
 
@@ -64,7 +65,6 @@ comment: "{사용자가 제공했으면 기록. 없으면 생략}"
 - **요약**: 3-5줄
 - **핵심 개념**: 순차 bullet
 - **주요 인용/발췌**: briefing.md 기반 (있을 때)
-- **연관 질문**: study-guide.md 기반 (있을 때)
 - **원본**: `[[raw/.../source...]]`
 
 ## Phase 2: 기존 페이지 업데이트 (index.md 기반 연결)
@@ -85,7 +85,7 @@ comment: "{사용자가 제공했으면 기록. 없으면 생략}"
 - `log.md`:
   - 위쪽에 `## [{YYYY-MM-DD}] {slug} | ingest — {description}` 한 줄 삽입
 
-## Phase 4: 출력 + graphify 안내
+## Phase 4: 출력
 
 출력:
 ```
@@ -94,9 +94,6 @@ comment: "{사용자가 제공했으면 기록. 없으면 생략}"
   - sources/{slug2}.md (신규)
   - concepts/{name}.md (업데이트)
   - projects/{name}.md (업데이트)
-
-그래프 증분 업데이트 권장:
-  cd "{VAULT}" && /graphify wiki --update
 ```
 
 ## 에러 처리

@@ -1,12 +1,11 @@
 #!/bin/bash
 # rakis plugin — 스킬 기능 통합 테스트
-# 실제 외부 서비스(NotebookLM, Obsidian MCP, GitHub, repomix, graphify)를 호출하여 검증
+# 실제 외부 서비스(NotebookLM, Obsidian MCP, GitHub, repomix)를 호출하여 검증
 #
 # Usage:
 #   ./test.sh              # 전체 테스트
 #   ./test.sh source       # source-analyze만
 #   ./test.sh wiki         # wiki 스킬만
-#   ./test.sh graphify     # graphify CLI만
 #   ./test.sh deps         # 의존성 확인만
 
 set -euo pipefail
@@ -54,13 +53,6 @@ test_deps() {
     fail "npx 미설치"
   fi
 
-  # graphify
-  if command -v graphify &>/dev/null; then
-    pass "graphify CLI 설치됨"
-  else
-    fail "graphify 미설치 — uv tool install graphifyy --python 3.13 (또는 /rakis:setup 으로 일괄 설치)"
-  fi
-
   echo ""
 }
 
@@ -71,7 +63,11 @@ test_source_analyze() {
 
   # 1. repomix: 소규모 repo 변환
   echo "  [repomix]"
-  REPOMIX_OUT="/tmp/test-repomix-output.txt"
+  # macOS의 /tmp 는 /private/tmp 심볼릭 링크다. notebooklm-py 0.7.3부터 심볼릭 링크
+  # 경로 업로드를 기본 거부하므로("Path is a symlink; pass --follow-symlinks"),
+  # 실경로를 써야 source add 가 통과한다.
+  TMPROOT=$(cd /tmp && pwd -P)
+  REPOMIX_OUT="$TMPROOT/test-repomix-output.txt"
   rm -f "$REPOMIX_OUT"
   REPOMIX_RESULT=$(npx repomix --remote raki-1203/raki-claude-plugins --output "$REPOMIX_OUT" 2>&1 || true)
   if echo "$REPOMIX_RESULT" | grep -q "All Done"; then
@@ -91,7 +87,10 @@ test_source_analyze() {
   else
     # 생성
     NB_OUTPUT=$(notebooklm create "테스트 노트북 $(date +%s)" 2>&1)
-    NB_ID=$(echo "$NB_OUTPUT" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+    # head -1 필수: 0.7.3의 create는 "Tip: ... run 'notebooklm use <id>'" 줄에도 UUID를 실어
+    # 보내므로 grep이 2줄을 뱉는다. 개행 낀 NB_ID로 use를 부르면 set -e가 스크립트를 죽여
+    # 정리 단계가 실행되지 않고 노트북이 고아로 남는다.
+    NB_ID=$(echo "$NB_OUTPUT" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
     if [ -n "$NB_ID" ]; then
       pass "노트북 생성: $NB_ID"
     else
@@ -240,7 +239,9 @@ test_wiki() {
       fail "$fname: frontmatter 없음"
       FAIL_FM=$((FAIL_FM + 1))
     fi
-  done < <(find "$VAULT/wiki" -name "*.md" -type f 2>/dev/null)
+    # 외부 배포용 파일은 frontmatter를 일부러 뺀다 (Confluence 등에 그대로 붙여넣는 산출물).
+    # 위키 내부 규약을 강요하면 붙여넣을 때 지워야 할 잡음이 된다.
+  done < <(find "$VAULT/wiki" -name "*.md" -type f -not -name "CONFLUENCE-*" 2>/dev/null)
   if [ "$FAIL_FM" -eq 0 ]; then
     pass "전체 wiki 페이지 frontmatter OK (${PASS_FM}개)"
   fi
@@ -262,46 +263,6 @@ test_wiki() {
   echo ""
 }
 
-# ─── graphify CLI 테스트 ───
-
-test_graphify() {
-  echo "🔬 graphify CLI 테스트"
-
-  if ! command -v graphify &>/dev/null; then
-    skip "graphify 미설치 — 전체 건너뜀"
-    echo ""
-    return
-  fi
-
-  # graphify CLI 동작
-  if graphify --help 2>&1 | grep -q "Commands:"; then
-    pass "graphify CLI 동작"
-  else
-    fail "graphify CLI 오류"
-  fi
-
-  # hook install/status/uninstall (현재 프로젝트에서)
-  if graphify hook install 2>&1 | grep -q "installed"; then
-    pass "graphify hook install 성공"
-  else
-    fail "graphify hook install 실패"
-  fi
-
-  if graphify hook status 2>&1 | grep -q "installed"; then
-    pass "graphify hook status 확인"
-  else
-    fail "graphify hook status 실패"
-  fi
-
-  if graphify hook uninstall 2>&1 | grep -q "removed"; then
-    pass "graphify hook uninstall 성공"
-  else
-    fail "graphify hook uninstall 실패"
-  fi
-
-  echo ""
-}
-
 # ─── 실행 ───
 
 echo "=== rakis plugin 통합 테스트 ==="
@@ -313,7 +274,6 @@ case "$TARGET" in
     test_deps
     test_source_analyze
     test_wiki
-    test_graphify
     ;;
   deps)
     test_deps
@@ -325,15 +285,12 @@ case "$TARGET" in
   wiki)
     test_wiki
     ;;
-  graphify)
-    test_graphify
-    ;;
   smoke)
     ;;
   v3)
     ;;
   *)
-    echo "Usage: ./test.sh [all|deps|source|wiki|graphify|smoke|v3]"
+    echo "Usage: ./test.sh [all|deps|source|wiki|smoke|v3]"
     exit 1
     ;;
 esac

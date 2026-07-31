@@ -119,19 +119,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 4. **결정 기록** → `log.md`에 추가
 5. **`index.md` 갱신** — 새 페이지가 있으면 적절한 섹션에 추가
 
-### 5. 그래프 업데이트 안내
-
-Step 4에서 **실제로 저장된 항목이 있을 때만** 안내한다. Step 3에서 사용자가 [취소]를 선택했거나 승인된 항목이 0건이면 안내도 생략하고 Step 6으로 직행.
-
-graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH> --update` 형태로 사용자가 직접 invoke해야 갱신된다. bash 실행 불가.
-
-**조건 체크 (`command -v graphify`):**
-- 성공 → Step 6 완료 보고에 한 줄 안내 포함
-- 실패 → 조용히 생략
-
-**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
-
-### 6. 완료 보고
+### 5. 완료 보고
 
 ```
 ## Wiki Wrap-up 완료
@@ -140,17 +128,10 @@ graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH> --update` 형태
 - 업데이트: 1건 (claude-code.md)
 - 로그 기록: 1건
 
-그래프 증분 업데이트 권장:
-  /graphify "${VAULT_PATH}" --update
-
 다음 세션에서 "~에 대해 정리된 거 있어?"로 찾을 수 있습니다.
 ```
 
-## 종료 안내
-
-작업 저장 후 다음 명령을 사용자에게 안내:
-
-> 그래프 증분 업데이트 권장: `cd "{VAULT}" && /graphify wiki --update`
+Step 3에서 사용자가 [취소]를 선택했거나 승인된 항목이 0건이면 저장 없이 종료했음을 알린다.
 
 ## 주의사항
 

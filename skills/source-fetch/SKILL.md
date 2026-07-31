@@ -1,6 +1,6 @@
 ---
 name: source-fetch
-description: Use when the user wants to add an external source (URL, GitHub repo, PDF, local file) to the Obsidian vault — saves the original to raw/ and optionally enriches with NotebookLM briefing/study-guide/mindmap. Does NOT write to wiki/.
+description: Use when the user wants to add an external source (URL, GitHub repo, PDF, local file) to the Obsidian vault — saves the original to raw/ and optionally enriches with a NotebookLM briefing. Does NOT write to wiki/.
 ---
 
 # source-fetch — 원본만 raw/에 저장
@@ -30,7 +30,7 @@ description: Use when the user wants to add an external source (URL, GitHub repo
 /rakis:source-fetch <url-or-path> [--slug <slug>] [--no-enrich|--force-enrich] [--hint "..."]
 ```
 
-- `--hint "<한 줄>"`: NotebookLM briefing/study-guide 생성 시 관점·도메인 힌트 주입 (예: `--hint "트레이딩 전략 관점 — 구간별 종료 조건에 집중"`). 플래그 없으면 기본 built-in 프롬프트 그대로. enrich 건너뛰는 경우 무시됨.
+- `--hint "<한 줄>"`: NotebookLM briefing 생성 시 관점·도메인 힌트 주입 (예: `--hint "트레이딩 전략 관점 — 구간별 종료 조건에 집중"`). 플래그 없으면 기본 built-in 프롬프트 그대로. enrich 건너뛰는 경우 무시됨.
 
 ## Phase 0: 유형 감지 + slug 생성
 
@@ -104,12 +104,12 @@ enrich 조건 충족 시 (상세 명령은 `references/enrich.md` 참조):
 1. `command -v notebooklm` 확인 → 없으면 안내 후 건너뜀 (에러 아님)
 2. `notebooklm auth check --test` → 실패 시 건너뜀
 3. `notebooklm create "{slug}" --json` → id 추출 후 원본 업로드 (`notebooklm source add`)
-4. `notebooklm generate mind-map` + `notebooklm download mind-map … mindmap.json`
-5. `notebooklm generate report --format briefing-doc --wait [--append "$DOMAIN_HINT"]` + `download report --latest … briefing.md`
-6. `notebooklm generate report --format study-guide --wait [--append "$DOMAIN_HINT"]` + `download report --latest … study-guide.md`
-7. `notebooklm delete -n <id> -y` (ID 추적 안 함)
+4. `notebooklm generate report --format briefing-doc --wait [--append "$DOMAIN_HINT"]` + `download report --latest … briefing.md`
+5. `notebooklm delete -n <id> -y` (ID 추적 안 함)
 
-> `--hint` 플래그가 있으면 5·6단계에서 `--append`로 주입. mind-map은 `--append` 미지원이라 힌트 무관.
+> `--hint` 플래그가 있으면 4단계에서 `--append`로 주입.
+>
+> **briefing만 생성한다.** study-guide·mindmap은 2026-07-31 실측 후 제거 — 인용률 29%/15%, study-guide는 분량의 35.6%가 퀴즈·서술형 질문이었다. 근거는 `references/enrich.md` 참조.
 
 ## Phase 4: 출력
 

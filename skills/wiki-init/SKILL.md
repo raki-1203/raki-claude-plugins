@@ -261,21 +261,7 @@ cat > "${VAULT_PATH}/CLAUDE.md" <<EOF
 EOF
 ```
 
-### 5. 초기 graphify 빌드 안내
-
-graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH>` 형태로 사용자가 직접 invoke해야 한다. bash 실행 불가.
-
-**빈 vault 체크:**
-```bash
-find "${VAULT_PATH}/wiki" -name '*.md' -not -name '.gitkeep' | head -1
-```
-
-**안내 분기:**
-- 빈 vault → Step 6 리포트에서 "첫 자료 수집 후 `/graphify` 실행하세요"
-- 페이지 있음 + graphify 설치됨 (`command -v graphify` 성공) → Step 6 리포트에서 "`/graphify \"${VAULT_PATH}\"` 실행 권장"
-- graphify 미설치 → Step 6 리포트에서 "`/rakis:setup`으로 graphify 설치 후 `/graphify` 실행"
-
-### 6. 완료 리포트
+### 5. 완료 리포트
 
 ```
 ✅ wiki-init 완료
@@ -291,9 +277,7 @@ CLAUDE.md: 생성됨 (v3 스키마)
      /rakis:source-fetch <URL>
   3. 위키 컴파일:
      /rakis:wiki-ingest
-  4. 그래프 빌드 (위키가 쌓인 후):
-     cd "${VAULT_PATH}" && /graphify wiki
-  5. 질의:
+  4. 질의:
      /rakis:wiki-query "~ 정리된 거 있어?"
 ```
 
@@ -302,4 +286,3 @@ CLAUDE.md: 생성됨 (v3 스키마)
 - 이 스킬은 프로젝트 폴더에서 실행한다 (vault 폴더에서 실행하는 것은 지원 범위 밖)
 - 기존 vault에 덮어쓰기 하지 않음 — 상태 체크 후 보완/재설정/스킵 분기
 - CLAUDE.md 백업 시 `.bak` 확장자 사용 (타임스탬프 없음 — 단순히 이전 것만 보존)
-- graphify 의존성은 `/rakis:setup`이 설치 담당. wiki-init은 건너뛸 뿐 설치하지 않음.

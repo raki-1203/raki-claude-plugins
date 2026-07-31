@@ -39,8 +39,7 @@ description: Use once per vault to upgrade from rakis v2.x structure to v3.0 —
    ✓ 마이그레이션 완료.
 
    다음 단계:
-     rm -rf "$VAULT/graphify-out/"   # v2 그래프 캐시 삭제
-     cd "$VAULT" && /graphify wiki    # v3 기준 풀 빌드
+     rm -rf "$VAULT/graphify-out/"   # v2 그래프 캐시 삭제 (있을 때만)
    ```
 
 ## 롤백

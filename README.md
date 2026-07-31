@@ -61,7 +61,6 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 - `notebooklm-py` (optional, enrich 용)
 - `npx` + `repomix` (repo 수집)
 - `gh` CLI (private repo 폴백)
-- `graphify` CLI (탐색형 query + 주간 풀 리빌드)
 
 #### Commands
 
@@ -69,7 +68,6 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 |---------|-------------|
 | `/rakis:setup` | 의존성 설치 + 글로벌 CLAUDE.md 매핑 |
 | `/rakis:help` | 사용법 안내 (`/rakis:help <이름>`으로 상세) |
-| `/rakis:wc-cp-graph` | 워크트리 graphify 파일 복사 |
 
 ## 빠른 시작
 
@@ -114,7 +112,7 @@ make init
 /rakis:setup
 ```
 
-`source-fetch`, `wiki-query` 등 일부 스킬에 필요한 외부 도구(notebooklm-py, gh, graphify, node)를 점검하고, 누락된 것을 동의 후 설치합니다. Python 툴 관리자 `uv`도 없으면 같이 자동 설치됩니다.
+`source-fetch`, `wiki-query` 등 일부 스킬에 필요한 외부 도구(notebooklm-py, gh, node)를 점검하고, 누락된 것을 동의 후 설치합니다. Python 툴 관리자 `uv`도 없으면 같이 자동 설치됩니다.
 
 전제조건: macOS, Homebrew. brew가 없으면 setup 시작 시 안내합니다.
 
