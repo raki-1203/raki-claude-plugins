@@ -134,17 +134,7 @@ frontmatter가 불완전한 페이지:
 - `index.md` 갱신
 - `log.md`에 린트 실행 기록: `## [YYYY-MM-DD] lint | 위키 린트 N건 수정`
 
-### 5. 그래프 풀 리빌드 안내
-
-Step 4 수정이 모두 끝나면 사용자에게 풀 리빌드를 안내한다. graphify는 Claude Code 스킬이므로 `/graphify <VAULT_PATH>` 형태로 사용자가 직접 invoke해야 한다. bash 실행 불가.
-
-lint는 주 1회 수행되므로 이 시점에 풀 빌드(`--update` 없이)를 권장해 정합성을 복구한다.
-
-**조건 체크 (`command -v graphify`):**
-- 성공 → Step 4 보고 끝에 안내 포함
-- 실패 → "`/rakis:setup` 실행 권장 (graphify 미설치)" 안내
-
-**보고 예시:**
+### 5. 결과 보고
 
 ```
 ## 위키 린트 완료 (YYYY-MM-DD)
@@ -153,12 +143,7 @@ lint는 주 1회 수행되므로 이 시점에 풀 빌드(`--update` 없이)를 
   - 모순 해결: N
   - 링크 보강: N
   - comment 보완: N
-
-그래프 풀 리빌드 권장 (주 1회 정합성 복구):
-  /graphify "${VAULT_PATH}"
 ```
-
-**`${VAULT_PATH}`**: "Vault 경로 탐지" 섹션의 결과 경로.
 
 ## 출력 처리
 
@@ -175,8 +160,6 @@ lint는 주 1회 수행되므로 이 시점에 풀 빌드(`--update` 없이)를 
    - 린트 위반: {V}건 (상세: `outputs/lint-{date}.md`)
    ```
 3. **log.md 한 줄**: `## [{YYYY-MM-DD}] lint | {V}건 발견 (고아 {O}, stale {S}, frontmatter {F})`
-4. **graphify 풀 리빌드 안내** (출력 마지막):
-   > `cd "{VAULT}" && /graphify wiki` — 주 1회 풀 리빌드 권장
 
 ## 주의사항
 

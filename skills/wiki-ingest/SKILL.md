@@ -85,7 +85,7 @@ comment: "{사용자가 제공했으면 기록. 없으면 생략}"
 - `log.md`:
   - 위쪽에 `## [{YYYY-MM-DD}] {slug} | ingest — {description}` 한 줄 삽입
 
-## Phase 4: 출력 + graphify 안내
+## Phase 4: 출력
 
 출력:
 ```
@@ -94,9 +94,6 @@ comment: "{사용자가 제공했으면 기록. 없으면 생략}"
   - sources/{slug2}.md (신규)
   - concepts/{name}.md (업데이트)
   - projects/{name}.md (업데이트)
-
-그래프 증분 업데이트 권장:
-  cd "{VAULT}" && /graphify wiki --update
 ```
 
 ## 에러 처리

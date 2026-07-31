@@ -15,7 +15,7 @@ description: rakis 플러그인의 사용법을 안내합니다 (/rakis:help 또
 
 인식하는 스킬명:
 - `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`, `weekly-report`, `meeting-digest`
-- `setup`, `help`, `wc-cp-graph` (커맨드)
+- `setup`, `help` (커맨드)
 
 ## 단계 A: 전체 개요 출력 (인자 없을 때)
 
@@ -60,7 +60,6 @@ Karpathy의 LLM Knowledge Base 방법론(3-Layer)으로 Obsidian vault에 지식
 커맨드:
   /rakis:setup        — 의존성 설치 + 글로벌 CLAUDE.md 매핑
   /rakis:help         — 이 안내 (/rakis:help <스킬명>으로 상세)
-  /rakis:wc-cp-graph  — 워크트리 graphify 파일 복사
 
 ## 자세히 보기
 
@@ -79,9 +78,9 @@ vault에 축적된 지식으로 질문에 답변하거나, 프로젝트 관련 �
 
 ## 동작 분기
 - 답변형: "X가 뭐야?", "X 쓰는 법?"
-  → index.md + 관련 페이지 + graphify query(있으면) → 답변 (인용 포함)
+  → index.md + 관련 페이지 → 답변 (인용 포함)
 - 탐색형: "이 프로젝트 관련 뭐 있어?", "둘러보고 싶어"
-  → 프로젝트 컨텍스트 수집(≤50줄) → graphify query → 관련 페이지 목록
+  → 프로젝트 컨텍스트 수집(≤50줄) → index.md 대조 → 관련 페이지 목록
 
 ## 사용 예시
 "openclaw에 대해 정리된 거 있어?"
@@ -112,7 +111,6 @@ raw/에 원본 보존 + wiki/에 요약 페이지 생성 + 관련 페이지 업�
 3. wiki/sources/에 요약 페이지 + comment frontmatter
 4. 관련 페이지 업데이트 + index.md 갱신
 5. log.md 기록
-6. graphify <vault> --update (그래프 증분)
 
 ## 트리거
 "저장해줘", "위키에 넣어줘", "정리해줘"
@@ -138,7 +136,6 @@ Phase 1: 중복 체크 (캐시 재사용)
 Phase 2~4: NotebookLM 병렬 분석
 Phase 5: 결과 통합
 Phase 6: raw/ + wiki/ 저장 (comment frontmatter 포함)
-Phase 7: graphify <vault> --update
 
 ## 확장 분석
 "더 깊이", "팟캐스트로", "슬라이드로", "퀴즈" 등 후속 요청 가능.
@@ -187,7 +184,6 @@ v2 구조(graph-report.md, analysis.md 등 legacy 파일)를 v3 Karpathy 3-Layer
 2. 사용자 확인 (전체/선택/코멘트 수정/취소)
 3. 승인된 항목 wiki/에 저장 (comment 포함)
 4. log.md 기록
-5. graphify <vault> --update
 
 ## 트리거
 "/wiki-wrap-up" 명시 실행 권장
@@ -216,7 +212,6 @@ E. 데이터 갭 — frontmatter 누락 (description, sources, related, confiden
 2. 5가지 점검
 3. 카테고리별 리포트
 4. 사용자 승인 후 수정 실행
-5. graphify <vault> 풀 리빌드 (정합성 보장)
 
 ## 트리거
 "위키 점검해줘", "위키 정리해줘", "린트해줘"
@@ -241,8 +236,7 @@ Obsidian vault에 Karpathy 3-Layer 구조를 자동 생성.
    - vault 경로, 역할, 목적, 자료 형태, 관심 분야, 아웃풋
 3. 구조 생성 (raw/ 5 + wiki/ 5 + index.md + log.md)
 4. vault CLAUDE.md 생성 (사용자 프로필 + 규칙)
-5. 초기 graphify 빌드 (빈 vault는 스킵)
-6. 완료 리포트
+5. 완료 리포트
 
 ## 트리거
 "/wiki-init" 명시 실행, "위키 초기화"
@@ -321,7 +315,7 @@ rakis 플러그인이 필요로 하는 외부 도구를 설치하고, 글로벌 
 ## 설치 대상
 - uv (Python 도구 매니저, 전제조건)
 - notebooklm-py (NotebookLM CLI)
-- node, gh, graphify
+- node, gh
 - mlx-whisper (Apple MLX Whisper CLI — meeting-digest용)
 - ffmpeg (오디오/비디오 변환)
 
@@ -352,24 +346,6 @@ rakis 전체 또는 특정 스킬/커맨드의 사용법 출력.
 /rakis:help <이름>     — 특정 스킬/커맨드 상세
 ```
 
-### wc-cp-graph
-
-```
-# /rakis:wc-cp-graph — 워크트리 헬퍼
-
-## 용도
-메인 워크트리의 graphify 산출물(GRAPH_REPORT.md, CLAUDE.md, .claude/settings.json)을 현재 워크트리로 복사.
-
-## 사용법
-/rakis:wc-cp-graph
-
-## 동작
-메인 워크트리에서 다음을 현재 경로로 복사:
-- graphify-out/GRAPH_REPORT.md
-- CLAUDE.md (있으면)
-- .claude/settings.json (있으면)
-```
-
 ## 알 수 없는 이름일 때
 
 ```
@@ -379,7 +355,7 @@ rakis 전체 또는 특정 스킬/커맨드의 사용법 출력.
   wiki-query, wiki-ingest, source-fetch, migrate-v3, wiki-wrap-up, wiki-lint, wiki-init, weekly-report, meeting-digest
 
 사용 가능한 커맨드:
-  setup, help, wc-cp-graph
+  setup, help
 
 /rakis:help <이름> 형식으로 호출하세요.
 ```

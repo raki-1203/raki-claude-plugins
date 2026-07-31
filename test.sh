@@ -1,12 +1,11 @@
 #!/bin/bash
 # rakis plugin — 스킬 기능 통합 테스트
-# 실제 외부 서비스(NotebookLM, Obsidian MCP, GitHub, repomix, graphify)를 호출하여 검증
+# 실제 외부 서비스(NotebookLM, Obsidian MCP, GitHub, repomix)를 호출하여 검증
 #
 # Usage:
 #   ./test.sh              # 전체 테스트
 #   ./test.sh source       # source-analyze만
 #   ./test.sh wiki         # wiki 스킬만
-#   ./test.sh graphify     # graphify CLI만
 #   ./test.sh deps         # 의존성 확인만
 
 set -euo pipefail
@@ -52,13 +51,6 @@ test_deps() {
     pass "npx 사용 가능 (repomix용)"
   else
     fail "npx 미설치"
-  fi
-
-  # graphify
-  if command -v graphify &>/dev/null; then
-    pass "graphify CLI 설치됨"
-  else
-    fail "graphify 미설치 — uv tool install graphifyy --python 3.13 (또는 /rakis:setup 으로 일괄 설치)"
   fi
 
   echo ""
@@ -262,46 +254,6 @@ test_wiki() {
   echo ""
 }
 
-# ─── graphify CLI 테스트 ───
-
-test_graphify() {
-  echo "🔬 graphify CLI 테스트"
-
-  if ! command -v graphify &>/dev/null; then
-    skip "graphify 미설치 — 전체 건너뜀"
-    echo ""
-    return
-  fi
-
-  # graphify CLI 동작
-  if graphify --help 2>&1 | grep -q "Commands:"; then
-    pass "graphify CLI 동작"
-  else
-    fail "graphify CLI 오류"
-  fi
-
-  # hook install/status/uninstall (현재 프로젝트에서)
-  if graphify hook install 2>&1 | grep -q "installed"; then
-    pass "graphify hook install 성공"
-  else
-    fail "graphify hook install 실패"
-  fi
-
-  if graphify hook status 2>&1 | grep -q "installed"; then
-    pass "graphify hook status 확인"
-  else
-    fail "graphify hook status 실패"
-  fi
-
-  if graphify hook uninstall 2>&1 | grep -q "removed"; then
-    pass "graphify hook uninstall 성공"
-  else
-    fail "graphify hook uninstall 실패"
-  fi
-
-  echo ""
-}
-
 # ─── 실행 ───
 
 echo "=== rakis plugin 통합 테스트 ==="
@@ -313,7 +265,6 @@ case "$TARGET" in
     test_deps
     test_source_analyze
     test_wiki
-    test_graphify
     ;;
   deps)
     test_deps
@@ -325,15 +276,12 @@ case "$TARGET" in
   wiki)
     test_wiki
     ;;
-  graphify)
-    test_graphify
-    ;;
   smoke)
     ;;
   v3)
     ;;
   *)
-    echo "Usage: ./test.sh [all|deps|source|wiki|graphify|smoke|v3]"
+    echo "Usage: ./test.sh [all|deps|source|wiki|smoke|v3]"
     exit 1
     ;;
 esac
