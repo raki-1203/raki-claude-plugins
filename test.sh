@@ -63,7 +63,11 @@ test_source_analyze() {
 
   # 1. repomix: 소규모 repo 변환
   echo "  [repomix]"
-  REPOMIX_OUT="/tmp/test-repomix-output.txt"
+  # macOS의 /tmp 는 /private/tmp 심볼릭 링크다. notebooklm-py 0.7.3부터 심볼릭 링크
+  # 경로 업로드를 기본 거부하므로("Path is a symlink; pass --follow-symlinks"),
+  # 실경로를 써야 source add 가 통과한다.
+  TMPROOT=$(cd /tmp && pwd -P)
+  REPOMIX_OUT="$TMPROOT/test-repomix-output.txt"
   rm -f "$REPOMIX_OUT"
   REPOMIX_RESULT=$(npx repomix --remote raki-1203/raki-claude-plugins --output "$REPOMIX_OUT" 2>&1 || true)
   if echo "$REPOMIX_RESULT" | grep -q "All Done"; then
@@ -235,7 +239,9 @@ test_wiki() {
       fail "$fname: frontmatter 없음"
       FAIL_FM=$((FAIL_FM + 1))
     fi
-  done < <(find "$VAULT/wiki" -name "*.md" -type f 2>/dev/null)
+    # 외부 배포용 파일은 frontmatter를 일부러 뺀다 (Confluence 등에 그대로 붙여넣는 산출물).
+    # 위키 내부 규약을 강요하면 붙여넣을 때 지워야 할 잡음이 된다.
+  done < <(find "$VAULT/wiki" -name "*.md" -type f -not -name "CONFLUENCE-*" 2>/dev/null)
   if [ "$FAIL_FM" -eq 0 ]; then
     pass "전체 wiki 페이지 frontmatter OK (${PASS_FM}개)"
   fi
