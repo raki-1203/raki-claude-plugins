@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.13.1] — 2026-08-06
+
+### Fixed
+
+- **NotebookLM enrich가 항상 실패하던 경쟁 상태 수정.** `source add`는 업로드만 하고 반환하는데, 소스가 `status: preparing`인 상태에서 `generate report`를 부르면 서버가 CREATE_ARTIFACT에 null을 반환해 `Error: Report generation is unavailable`로 죽었다. enrich 절차에 `source wait` 단계가 처음부터 없었다.
+
+  - `generate --wait`로는 해결되지 않는다 — `--wait`는 *생성* 완료를 기다리지 *소스 처리*를 기다리지 않는다.
+  - 실측 A/B (동일 4.5MB PDF, 같은 노트북): `preparing`에서 ❌ / `source wait` 후 `ready`에서 ✅. 대기 비용은 **2.6초**였다.
+  - 수정: `source add --json`으로 id를 수집해 생성 전에 전부 `source wait --timeout 300`. 타임아웃·실패 시 노트북을 정리하고 enrich만 건너뛴다(기존 skip 정책 유지).
+  - 에러 문구가 "unavailable"이라 기능 차단·계정 게이팅으로 오해하기 쉬워, `enrich.md`에 실측 A/B 표와 함께 경고를 박아뒀다.
+
+- **사내망(TLS 가로채기) 환경에서 enrich가 SSL 오류로 죽던 문제 대응.** KT 사내망은 TLS를 가로채며(리프 발급자 `CN=Kt Corporate Forward Trust CA ECDSA`), `curl`은 macOS 키체인 덕에 통과하지만 Python은 certifi만 봐서 실패한다. CLI는 이를 **"Cookies may be expired"로 잘못 안내**한다.
+
+  - 원인이 두 겹이다. **CA 번들만으로는 안 고쳐진다** — 번들을 넣으면 에러가 `self-signed certificate` → `Missing Authority Key Identifier`로 바뀔 뿐이다. Python 3.13이 `VERIFY_X509_STRICT`를 기본 활성화하는데 KT CA 인증서에 RFC 5280의 SKI/AKI 확장이 없기 때문. 실측 5개 Google 호스트 × strict on/off에서 **ON 전부 실패 / OFF 전부 통과**, Python 3.12는 정상.
+  - 수정 1: `enrich.md` 사전 조건에서 `~/.config/rakis/corp-ca-bundle.pem`이 있으면 **스킬 실행 중에만** `SSL_CERT_FILE`로 export(셸 전역 설정 아님). 번들 생성 절차도 문서화.
+  - 수정 2: `commands/setup.md`의 notebooklm-py 설치를 **`--python 3.12`로 핀 고정**하고 제거 금지 사유를 명시.
+  - 사내망 밖에서는 무해하다 — 번들은 certifi를 그대로 포함하고, 파일이 없으면 export 자체가 일어나지 않는다.
+  - 참고: `uv` 자체도 같은 MITM에 막히므로(`invalid peer certificate: UnknownIssuer`) 설치 시 `--system-certs`가 필요하다.
+
 ## [3.13.0] — 2026-07-31
 
 ### Removed
