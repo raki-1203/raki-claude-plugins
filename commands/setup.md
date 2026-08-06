@@ -54,7 +54,7 @@ uv tool list 2>/dev/null | grep -E "notebooklm-py|mlx-whisper"
 
 | 도구 | 체크 명령 | 설치 명령 |
 |------|----------|----------|
-| `notebooklm-py` | `command -v notebooklm` | `uv tool install --upgrade notebooklm-py --with playwright` |
+| `notebooklm-py` | `command -v notebooklm` | `uv tool install --upgrade --python 3.12 notebooklm-py --with playwright` |
 | `node` | `command -v node` | `brew upgrade node 2>/dev/null \|\| brew install node` |
 | `gh` | `command -v gh` | `brew upgrade gh 2>/dev/null \|\| brew install gh` |
 | `jq` | `command -v jq` | `brew upgrade jq 2>/dev/null \|\| brew install jq` |
@@ -62,6 +62,8 @@ uv tool list 2>/dev/null | grep -E "notebooklm-py|mlx-whisper"
 | `mlx-whisper` | `command -v mlx_whisper` | `uv tool install --upgrade mlx-whisper` |
 | `ffmpeg` | `command -v ffmpeg` | `brew upgrade ffmpeg 2>/dev/null \|\| brew install ffmpeg` |
 
+> **notebooklm-py의 `--python 3.12` 핀 고정 (제거하지 말 것)**: Python 3.13은 `ssl.create_default_context()`에 `VERIFY_X509_STRICT`를 기본으로 켠다. 사내망(KT 등)이 TLS를 가로채는 환경에서 기업 CA 인증서가 RFC 5280의 SKI/AKI 확장을 갖추지 않은 경우가 많아, 3.13에서는 CA를 신뢰시켜도 `Missing Authority Key Identifier`로 전부 거부된다. 3.12는 이 검사가 없어 정상 동작한다. 사내망 CA 번들 설정은 `source-fetch/references/enrich.md` 참조.
+>
 > **mlx-whisper**: Apple MLX 기반 Whisper CLI. `meeting-digest` 스킬이 회의 녹음 전사에 사용 (Apple Silicon 네이티브, faster-whisper 대비 ~11배 빠름). 첫 실행 시 large-v3 모델 ~3GB가 HuggingFace에서 자동 다운로드됨.
 > **ffmpeg**: 오디오/비디오 포맷 변환. mp4/mov 등 비디오 파일에서 오디오 추출 시 필요.
 
