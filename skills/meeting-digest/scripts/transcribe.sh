@@ -95,14 +95,32 @@ echo "  (모델 첫 실행 시 HuggingFace에서 자동 다운로드 ~3GB 소요
 
 # mlx_whisper는 --output-name 으로 출력 파일명을 직접 지정 → transcript.* 로 바로 생성
 #
-# 무음 구간 hallucination(같은 문구 무한 반복) stuck-loop 방지 옵션:
-#   --condition-on-previous-text False : 이전 출력에 condition 안 해 반복 전파 차단
-#   --hallucination-silence-threshold 2 : 무음 2초↑ 구간의 hallucination 억제
-#   --no-speech-threshold 0.6 / --compression-ratio-threshold 2.0 : 무음/반복 세그먼트 컷
-# (긴 회의·발화 드문 녹음에서 1문장 무한반복으로 전사가 통째로 손상되는 것을 막음)
-# --initial-prompt : 도메인 용어 힌트로 고유명사 오인식 완화
-# --logprob-threshold -0.5 : 저확신(웅얼거림·잡음) 세그먼트를 hallucination으로 컷
-#   (기본 -1.0보다 공격적 — far-field 녹음의 환각 세그먼트 억제)
+# 무음 구간 hallucination(같은 문구 무한 반복) stuck-loop 방지 옵션.
+# 아래 2개가 실제로 효과를 내는 전부다 — ablate_flags.sh 실측으로 확인했다
+# (국민카드 2026-06-17 워크샵, far-field 147분 중 3구간 × 300초).
+#
+#   --condition-on-previous-text False
+#     이전 출력에 condition 안 해 반복 전파 차단. True로 되돌리면 90분 지점에서
+#     최장반복 x2 → x74, 반복률 5.6% → 100%(2002자 전부 환각)로 붕괴.
+#
+#   --logprob-threshold -0.5 (기본 -1.0보다 공격적)
+#     저확신(웅얼거림·잡음) 세그먼트를 hallucination으로 컷. -1.0으로 되돌리면
+#     10분 지점 x3 → x55(반복률 3.3% → 64%), 90분 지점 x2 → x55(5.6% → 93%).
+#
+#   --initial-prompt : 도메인 용어 힌트로 고유명사 오인식 완화
+#
+# ⚠️ 제거한 플래그 3개 — 전부 무효였다. 되살리지 말 것:
+#   --no-speech-threshold 0.6          기본값과 동일 → no-op
+#   --compression-ratio-threshold 2.0  2.4(기본)와 3구간 출력 완전 동일 → no-op
+#   --hallucination-silence-threshold 2
+#       mlx_whisper transcribe.py의 `if word_timestamps:` 블록 안에 있어
+#       --word-timestamps True 없이는 dead code. 살리려면 word-timestamps를
+#       함께 켜야 하는데, 그건 전사 시간을 늘리고 화자분리 깜빡임도 개선하지
+#       못했다(2026-08-07 실측, 롤백됨).
+#
+# 트레이드오프 주의: 위 2개는 환각을 막는 대신 어려운 far-field 구간의 실제
+# 발화도 함께 버린다. 완화해서 되찾는 건 불가능하다(완화 = 환각 폭증). 내용
+# 보존이 더 중요하면 엔진 교체가 답이다 — bench_stt.sh의 Qwen3-ASR 비교 참고.
 mlx_whisper \
   "$INPUT" \
   --model "$REPO" \
@@ -112,10 +130,7 @@ mlx_whisper \
   --output-format all \
   --initial-prompt "$PROMPT" \
   --condition-on-previous-text False \
-  --hallucination-silence-threshold 2 \
-  --no-speech-threshold 0.6 \
   --logprob-threshold -0.5 \
-  --compression-ratio-threshold 2.0 \
   --verbose False \
   || { echo "❌ 전사 실패" >&2; exit 4; }
 

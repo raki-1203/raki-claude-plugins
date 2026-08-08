@@ -354,6 +354,22 @@ related: []
 | slug 빈 결과 | `--title` 명시 요청 |
 | 중복 wiki 파일 | overwrite/rename/cancel 질문 |
 
+## 개발용 스크립트 (회의록 생성 흐름에는 안 쓰임)
+
+STT 엔진·플래그를 바꾸기 전에 실측하기 위한 도구. 회의록 작성 중에는 호출하지 않는다.
+
+| 스크립트 | 용도 |
+|----------|------|
+| `bench_stt.sh` | 현행 mlx-whisper large-v3 vs Qwen3-ASR 1.7B/0.6B 속도·품질 비교. Qwen은 `/tmp/.qwen3-bench-venv`에 자동 격리 설치(torch 안 끌어옴) |
+| `ablate_flags.sh` | `transcribe.sh`의 환각 억제 플래그를 하나씩 되돌려 효과 측정 |
+| `bench_repeat.py` | 전사문의 환각 루프 지표(최장 연속 반복·반복률). **품질 판정의 주 지표** |
+| `bench_cer.py` | 두 전사문의 문자 불일치율 |
+
+⚠️ **CER로 품질을 판정하지 말 것.** 정답 전사가 없어 기준 자체가 틀릴 수 있다.
+2026-08-08 실측에서 CER은 Qwen을 59% "오류"로 표시했지만, 실제로는 기준(whisper)
+쪽이 해당 구간을 `그의 아들이` 반복으로 망가뜨린 것이었다. **반복 지표 + 육안 비교**로
+판정하고, CER은 "얼마나 다른가"를 보는 용도로만 쓴다.
+
 ## 트리거
 
 - `/rakis:meeting-digest <파일> --project <name>` 명시 실행
