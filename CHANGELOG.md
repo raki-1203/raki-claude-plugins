@@ -1,5 +1,46 @@
 # Changelog
 
+## [3.14.0] — 2026-08-08
+
+### Fixed
+
+- **`transcribe.sh`의 환각 억제 플래그 5개 중 3개가 아무 일도 안 하고 있었다.** 제거해도 출력이 바이트 단위로 동일함을 확인했다(국민카드 2026-06-17 워크샵 90분 지점 300초 클립, `diff` 완전 일치).
+
+  | 제거한 플래그 | 이유 |
+  |---|---|
+  | `--no-speech-threshold 0.6` | mlx_whisper 기본값과 동일 → no-op |
+  | `--compression-ratio-threshold 2.0` | 기본 2.4로 되돌려도 3구간 출력 완전 동일 → no-op |
+  | `--hallucination-silence-threshold 2` | `transcribe.py`의 `if word_timestamps:` 블록 안에 있어 `--word-timestamps True` 없이는 **dead code** |
+
+  "환각을 5중으로 막고 있다"는 착시만 걷어낸 것이고 동작 변화는 없다.
+
+- **남은 2개는 실측으로 필수임을 확인.** `ablate_flags.sh`로 3구간(10·40·90분 지점) × 300초 × 6구성을 돌린 결과, 되돌리면 붕괴한다 — 최장 연속 반복 / 반복률:
+
+  | 구성 | 600s | 2400s | 5400s |
+  |---|---|---|---|
+  | 현행 | x3 / 3.3% | x8 / 28.6% | x2 / 5.6% |
+  | `--logprob-threshold`를 -1.0(기본)으로 | **x55 / 64%** | x8 / 28.6% | **x55 / 93%** |
+  | `--condition-on-previous-text`를 True(기본)로 | x10 / 36% | x1 / 28.9% | **x74 / 100%** |
+
+  5400s의 기본 구성은 반복률 100% — 2002자가 전부 환각이다. 근거를 스크립트 주석에 실측치로 박아뒀다.
+
+### Added
+
+- **STT 벤치·ablation 스크립트 4종** (`skills/meeting-digest/scripts/`). v3.7.0에서 제거했던 벤치를 되살리되 비교 대상을 Qwen3-ASR로 바꾸고, 품질 지표를 CER에서 **환각 루프 탐지**로 교체했다.
+
+  - `bench_stt.sh` — mlx-whisper large-v3 vs Qwen3-ASR 1.7B/0.6B. 세 엔진 모두 production과 동일한 ffmpeg 전처리를 거친 같은 wav로 비교하고, 도메인 용어 힌트도 동등 투입(whisper `--initial-prompt` ↔ qwen `--context`). Qwen은 `/tmp/.qwen3-bench-venv`에 자동 격리 설치 — **torch/transformers를 안 끌어온다**(mlx+numpy+regex+hf-hub만)라 v3.10.0의 torch 제거 결정과 충돌하지 않는다.
+  - `ablate_flags.sh` — 억제 플래그 leave-one-out 측정.
+  - `bench_repeat.py` — 최장 연속 반복·반복률·고유 4-gram 비율.
+  - `bench_cer.py` — 문자 불일치율 (v3.7.0 것 재사용).
+
+### Notes
+
+- **CER은 STT 품질 판정에 쓸 수 없다.** 이번 실측에서 CER은 Qwen3-1.7B를 기준 대비 59% "오류"로 표시했지만, 실제로는 기준인 whisper 쪽이 그 구간을 `그 다음 / 그런 / 그가 / 그의 아들이 ×3`으로 파괴한 것이었다. 서로 독립인 세 엔진(whisper 기본설정·Qwen 1.7B·Qwen 0.6B)이 같은 내용(`데이터 파이프라인이 있어야 되거든요`, `테이블에 대한 메타 정보가 쌓여야 되고`)으로 수렴해 실재 발화임이 확인됐다. `SKILL.md`에 경고를 남겼다.
+
+- **엔진 교체는 아직 안 했다.** Qwen3-ASR-1.7B가 far-field 3구간 모두에서 유효 전사량 +31%(2794 → 3665자)에 환각 루프도 없지만 **4.6배 느리다**(147분 회의 10분 → 47분). Apache 2.0이라 라이선스 제약은 없다. 판단 보류.
+
+- **Qwen3-ASR-0.6B는 부적합.** `--context`로 넣은 도메인 용어가 전사문에 그대로 유출된다(`그 다음에 이제 전 에이전트 아키텍처 인터페이스 파이프라인 …`). 1.7B와 whisper는 유출 0건.
+
 ## [3.13.1] — 2026-08-06
 
 ### Fixed
