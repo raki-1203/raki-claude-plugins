@@ -55,6 +55,7 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 | `wiki-lint` | 위키 건강 점검 |
 | `wiki-init` | 빈 볼트 초기화 |
 | `migrate-v3` | v2 → v3 마이그레이션 (1회성) |
+| `eli5` | 코드·구조를 HTML 그림으로 설명 (조사→근거 표시→검증) |
 
 ## 의존성
 
@@ -83,6 +84,7 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 /rakis:wiki-ingest                                 # raw → wiki 컴파일
 /rakis:wiki-query "MCP가 뭐였지?"                  # 질의
 /rakis:wiki-wrap-up                                # 세션 끝에 학습 저장
+/rakis:eli5 "세션이 만들어지는 과정"               # 구현 전에 구조를 그림으로 검토
 
 # 4. 주 1회
 /rakis:wiki-lint                                   # 건강 점검 + 그래프 리빌드
