@@ -14,7 +14,7 @@ description: rakis 플러그인의 사용법을 안내합니다 (/rakis:help 또
 - **알 수 없는 이름** → "알 수 없는 스킬" + 사용 가능한 스킬 목록 제시
 
 인식하는 스킬명:
-- `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`, `weekly-report`, `meeting-digest`
+- `wiki-query`, `wiki-ingest`, `source-fetch`, `migrate-v3`, `wiki-wrap-up`, `wiki-lint`, `wiki-init`, `weekly-report`, `meeting-digest`, `eli5`
 - `setup`, `help` (커맨드)
 
 ## 단계 A: 전체 개요 출력 (인자 없을 때)
@@ -40,6 +40,7 @@ Karpathy의 LLM Knowledge Base 방법론(3-Layer)으로 Obsidian vault에 지식
    - "~ 분석해줘"                   → source-fetch
    - "이거 저장해줘"                → wiki-ingest
    - /wiki-wrap-up                  → 세션 끝에 학습 저장
+   - "그림으로 설명해줘"           → eli5 (구현 전 구조 검토)
 
 4. 주 1회: /wiki-lint
    (건강 점검 + 그래프 리빌드)
@@ -56,6 +57,7 @@ Karpathy의 LLM Knowledge Base 방법론(3-Layer)으로 Obsidian vault에 지식
   wiki-init       — vault 초기화 (프로젝트 폴더에서 실행)
   weekly-report   — 주간 업무 보고서 초안 생성 (git/gh 기반)
   meeting-digest  — 회의 녹음 → 전사 → 구조화된 회의록 (mlx-whisper)
+  eli5            — 코드·구조를 HTML 그림으로 설명 (구현 전 검토)
 
 커맨드:
   /rakis:setup        — 의존성 설치 + 글로벌 CLAUDE.md 매핑
@@ -302,6 +304,39 @@ LLM이 안건/논의/결정/액션/이슈로 구조화된 회의록을 생성, �
 ## 트리거
 "/rakis:meeting-digest <파일> --project <name>" 명시 실행
 "회의 녹음 정리해줘", "회의록 만들어줘"
+```
+
+### eli5
+
+```
+# eli5 — 고치기 전에 그림으로 이해하기
+
+## 용도
+코드베이스·시스템 구조를 큰 그림과 적은 글의 단일 HTML 파일로 설명.
+구현을 시작하기 전에, 에이전트가 파악한 구조가 맞는지 사람이 눈으로 확인하는 단계.
+
+## 사용법
+/rakis:eli5 <설명할 대상> [옵션]
+
+옵션:
+  --out <path>   출력 경로 (기본: ./eli5-{slug}.html)
+  --quick        의미 검증 생략 — 훑어보기 전용, 구현 근거로 쓰지 말 것
+
+## 동작
+Phase 0: 조사 — 코드·설정·문서·git 이력을 읽고 "그림 요소 / 근거 / 등급" 표 작성
+Phase 1: HTML 생성 — 인라인 SVG, 확인/해석/미확인 3등급 색 구분, 주장마다 file:line
+Phase 2: 검증 — ① 구조·렌더링(브라우저로 실제 열기) ② 의미(표와 그림 역대조)
+Phase 3: 출력 — 근거 등급 집계 + "확인 못 한 것" 목록
+
+## 공식 eli5와 차이
+앤트로픽 공식판(MIT)은 지시문이 두 문장뿐이라 조사·검증 장치가 없다.
+이 스킬은 조사 기록표를 강제하고, 근거 없는 상자·화살표를 삭제한다.
+
+## 쓰는 자리
+낯선 모듈 파악 / 설계 검토(선택과 대안) / 장애 경로 추적 / PR 검토 전 단계
+
+## 트리거
+"그림으로 설명해줘", "구조 좀 그려줘", "고치기 전에 어떻게 도는지 보여줘"
 ```
 
 ### setup

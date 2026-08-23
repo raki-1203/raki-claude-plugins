@@ -1,5 +1,25 @@
 # Changelog
 
+## [3.15.0] — 2026-08-24
+
+### Added
+
+- **`eli5` 스킬** — 코드·구조를 큰 그림과 적은 글의 단일 HTML 파일로 설명한다. 구현 전에 에이전트가 파악한 구조를 사람이 눈으로 검토하는 단계용.
+
+  앤트로픽 공식 `eli5`([anthropics/claude-plugins-community](https://github.com/anthropics/claude-plugins-community/tree/main/eli5), Thariq Shihipar, MIT, 2026-08-21)를 그대로 쓰지 않은 이유: 공식판 `SKILL.md`는 **본문이 두 문장**이라 조사 지시도 검증 절차도 없다. 잘 정돈된 상자와 화살표는 정확하다는 인상을 주지만, 사실성은 무엇을 읽고 그렸는지에만 달려 있다.
+
+  더한 것은 세 가지다.
+
+  | 단계 | 강제하는 것 |
+  |---|---|
+  | Phase 0 조사 | 그림보다 먼저 코드·설정·문서·`git log`를 읽고 **"그림 요소 / 근거 / 등급" 표**를 만든다. 등급은 확인(코드에서 직접) · 해석(PR·이슈 근거 추론) · 미확인 |
+  | Phase 1 생성 | 3등급을 CSS 클래스 색으로 구분(인라인 색 금지 — 테마 전환에 반응 안 함), 주장마다 `file:line`, 마지막 섹션은 "확인 못 한 것" |
+  | Phase 2 검증 | **두 종류를 모두** — 구조·렌더링(브라우저로 실제 열어 잘림·겹침 확인)과 의미(조사 표와 그림 역대조). 표에 없는 상자는 지어낸 것이므로 삭제 |
+
+  `--quick`으로 의미 검증을 건너뛸 수 있으나 출력과 HTML 양쪽에 미검증 표시를 남긴다.
+
+  근거: [desty 블로그 60번](https://desty.github.io/blog/60-eli5-visual-explainer/)의 보강 조건 5개, [tt-a1i/archify](https://github.com/tt-a1i/archify)의 이단계 검증·CSS 클래스 색상 규칙.
+
 ## [3.14.1] — 2026-08-10
 
 ### Fixed
