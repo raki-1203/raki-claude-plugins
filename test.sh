@@ -259,6 +259,33 @@ test_wiki() {
   echo ""
 }
 
+# ─── router 테스트 ───
+
+test_router() {
+  echo "🔬 task-router 테스트"
+  if bash tests/unit/test_task_router.sh; then
+    pass "task-router 유닛 테스트"
+  else
+    fail "task-router 유닛 테스트"
+  fi
+  echo ""
+}
+
+# ─── Orca model inheritance 테스트 ───
+
+test_orca() {
+  echo "🔬 Orca model inheritance 테스트"
+  if bash tests/unit/test_orca_model_inherit.sh \
+      && bash tests/unit/test_orca_model_bridge.sh \
+      && bash tests/unit/test_claude_orca_launch.sh \
+      && bash tests/e2e/orca-model-inherit-smoke.sh; then
+    pass "Orca model inheritance"
+  else
+    fail "Orca model inheritance"
+  fi
+  echo ""
+}
+
 # ─── 실행 ───
 
 echo "=== rakis plugin 통합 테스트 ==="
@@ -270,6 +297,8 @@ case "$TARGET" in
     test_deps
     test_source_fetch
     test_wiki
+    test_router
+    test_orca
     ;;
   deps)
     test_deps
@@ -281,12 +310,18 @@ case "$TARGET" in
   wiki)
     test_wiki
     ;;
+  router)
+    test_router
+    ;;
+  orca)
+    test_orca
+    ;;
   smoke)
     ;;
   v3)
     ;;
   *)
-    echo "Usage: ./test.sh [all|deps|source|wiki|smoke|v3]"
+    echo "Usage: ./test.sh [all|deps|source|wiki|router|orca|smoke|v3]"
     exit 1
     ;;
 esac

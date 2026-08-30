@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Threads 작업 프롬프트 자동 라우터** — `UserPromptSubmit` hook이 요청 유형을 결정론적으로 분류해 7개 원문 중 하나만 `additionalContext`에 주입한다. 모호한 요청은 기존 동작을 유지한다.
+- Orca `worker-start`와 `worktree create --agent claude`에 Main 세션 model/provider 상속 bridge 추가
+
 ## [3.15.0] — 2026-08-24
 
 ### Added

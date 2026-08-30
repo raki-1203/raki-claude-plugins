@@ -46,6 +46,23 @@ fi
 
 echo ""
 
+# ─── shell script syntax ───
+
+echo "🐚 shell script syntax"
+for shell_script in \
+  scripts/orca-model-inherit.sh \
+  scripts/orca-worktree-model-bridge.sh \
+  scripts/claude-orca-launch.sh \
+  tests/e2e/orca-model-inherit-smoke.sh; do
+  if [ -f "$shell_script" ] && bash -n "$shell_script"; then
+    pass "shell syntax: $shell_script"
+  else
+    fail "shell syntax: $shell_script"
+  fi
+done
+
+echo ""
+
 # ─── 2. 스킬별 검증 ───
 
 for skill_dir in skills/*/; do
@@ -183,6 +200,12 @@ if bash tests/unit/test_frontmatter.sh >/dev/null 2>&1; then
   pass "frontmatter 유닛 테스트"
 else
   fail "frontmatter 유닛 테스트 — bash tests/unit/test_frontmatter.sh"
+fi
+
+if bash tests/unit/test_task_router.sh >/dev/null 2>&1; then
+  pass "task-router 유닛 테스트"
+else
+  fail "task-router 유닛 테스트 — bash tests/unit/test_task_router.sh"
 fi
 
 echo ""

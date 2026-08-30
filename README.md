@@ -57,6 +57,27 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 | `migrate-v3` | v2 → v3 마이그레이션 (1회성) |
 | `eli5` | 코드·구조를 HTML 그림으로 설명 (조사→근거 표시→검증) |
 
+## 작업 프롬프트 자동 적용
+
+`UserPromptSubmit` hook이 요청 유형을 로컬 규칙으로 판단해 Threads의 작업 프롬프트 7개 중 하나만 선택적으로 적용합니다.
+
+- 앱 제작·시스템 설계·리팩터링·디버깅·성능·멀티 에이전트·UI 작업을 구분
+- 요청이 일반적이거나 모호하면 아무 프롬프트도 추가하지 않음
+- 기존 `CLAUDE.md`와 스킬 내용은 변경하지 않음
+- hook은 LLM·네트워크를 호출하지 않음
+- hook 변경사항은 플러그인 업데이트 또는 새 세션에서 반영됨
+
+## Orca model inheritance
+
+Claude Code에서 직접 실행한 다음 Orca 경로는 Main 세션의 현재 canonical model을 사용합니다.
+
+- `orca orchestration worker-start --agent claude`
+- `orca worktree create --agent claude`
+
+`gpt-*` 모델은 loopback `claude-codex` proxy를 통해 Codex OAuth로 라우팅되고, `claude-*` 모델은 Anthropic 경로를 사용합니다. `--terminal`, 복합 shell command, 지원되지 않는 model, 일반 terminal에서 직접 실행한 Orca command는 자동 변경하지 않습니다.
+
+현재 Claude Code 세션에 이미 열려 있는 terminal에는 새 설정이 소급되지 않습니다. 새 Claude Code/Orca terminal을 열거나 해당 shell에서 `source ~/.zshrc`를 실행해야 합니다.
+
 ## 의존성
 
 - `notebooklm-py` (optional, enrich 용)
