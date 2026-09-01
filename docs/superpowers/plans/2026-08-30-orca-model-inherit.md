@@ -1,5 +1,11 @@
 # Orca 동적 모델 상속 구현 계획
 
+> **⚠️ 2026-09-01 — 이 문서의 `gpt-*` / loopback proxy 부분은 폐기됐다.**
+> `claude-codex` proxy(`127.0.0.1:18765`)가 Claude 요청까지 경유시키다 상류 실패를
+> `502 anthropic upstream request failed`로 바꿔 내보내 프록시째로 삭제했다.
+> 구현은 `claude-*` 상속만 남았고 proxy 관련 코드·테스트는 전부 제거됐다.
+> 아래는 당시 설계 기록으로 남겨 둔 것이며, 되살리지 말 것.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Claude Code Main 세션에서 실행하는 Orca의 `worker-start`와 `worktree create --agent claude`가 Main 세션의 현재 모델과 provider 경로를 그대로 사용하게 한다.

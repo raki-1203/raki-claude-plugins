@@ -1,5 +1,11 @@
 # Orca 동적 모델 상속 디자인
 
+> **⚠️ 2026-09-01 — 이 문서의 `gpt-*` / loopback proxy 부분은 폐기됐다.**
+> `claude-codex` proxy(`127.0.0.1:18765`)가 Claude 요청까지 경유시키다 상류 실패를
+> `502 anthropic upstream request failed`로 바꿔 내보내 프록시째로 삭제했다.
+> 구현은 `claude-*` 상속만 남았고 proxy 관련 코드·테스트는 전부 제거됐다.
+> 아래는 당시 설계 기록으로 남겨 둔 것이며, 되살리지 말 것.
+
 **Date**: 2026-08-30  
 **Status**: Spec (설계 승인 후 구현 예정)  
 **Target**: Claude Code 전역 hook과 Orca local runtime 연동

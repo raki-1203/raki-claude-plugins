@@ -242,7 +242,7 @@ MODEL=$(
   jq -r '
     select(.message?.role == "assistant" and
       (.message.model? | type == "string") and
-      (.message.model | test("^(gpt-|claude-)")))
+      (.message.model | test("^claude-")))
     | .message.model
   ' "$TRANSCRIPT" 2>/dev/null | tail -1 2>/dev/null
 ) || noop
@@ -257,15 +257,8 @@ case "$MODEL_FAMILY" in
   ''|*[!A-Za-z0-9._:-]*) noop ;;
 esac
 case "$MODEL_FAMILY" in
-  gpt-*|claude-*) ;;
+  claude-*) ;;
   *) noop ;;
-esac
-
-case "$MODEL_FAMILY" in
-  gpt-*)
-    command -v nc >/dev/null 2>&1 || noop
-    nc -z 127.0.0.1 18765 >/dev/null 2>&1 || noop
-    ;;
 esac
 
 AGENT_CLAUDE_COUNT=0

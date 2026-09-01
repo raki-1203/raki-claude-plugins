@@ -36,7 +36,7 @@ case "$MODEL_BASE" in
   *'[1m]') MODEL_BASE="${MODEL_BASE%\[1m\]}" ;;
 esac
 case "$MODEL_BASE" in
-  gpt-*|claude-*) ;;
+  claude-*) ;;
   *) noop ;;
 esac
 case "$MODEL_BASE" in
@@ -52,14 +52,6 @@ else
   noop
 fi
 shift 2
-
-# A GPT launch is only safe while the local Codex proxy is listening.
-case "$MODEL_BASE" in
-  gpt-*)
-    command -v nc >/dev/null 2>&1 || noop
-    nc -z 127.0.0.1 18765 >/dev/null 2>&1 || noop
-    ;;
-esac
 
 # Resolve the test seam only when it is set. Production uses command -v.
 ORCA_BIN=''
@@ -238,19 +230,6 @@ if [ "$PROMPT_SET" -eq 1 ]; then
   PROMPT_QUOTED="$(shell_quote "$PROMPT")"
   LAUNCH_COMMAND="$LAUNCH_COMMAND --prefill $PROMPT_QUOTED"
 fi
-
-LAUNCH_PREFIX=''
-case "$MODEL_BASE" in
-  gpt-*)
-    LAUNCH_PREFIX='env ANTHROPIC_BASE_URL=http://127.0.0.1:18765 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 '
-    ;;
-  claude-*)
-    if [ "${ANTHROPIC_BASE_URL-}" = 'http://127.0.0.1:18765' ]; then
-      LAUNCH_PREFIX='env ANTHROPIC_BASE_URL=http://127.0.0.1:18765 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 '
-    fi
-    ;;
-esac
-LAUNCH_COMMAND="${LAUNCH_PREFIX}${LAUNCH_COMMAND}"
 
 if ! TERMINAL_JSON=$("$ORCA_BIN" terminal create \
     --worktree "path:$WORKTREE_PATH" \

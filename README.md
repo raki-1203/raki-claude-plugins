@@ -74,7 +74,7 @@ Claude Code에서 직접 실행한 다음 Orca 경로는 Main 세션의 현재 c
 - `orca orchestration worker-start --agent claude`
 - `orca worktree create --agent claude`
 
-`gpt-*` 모델은 loopback `claude-codex` proxy를 통해 Codex OAuth로 라우팅되고, `claude-*` 모델은 Anthropic 경로를 사용합니다. `--terminal`, 복합 shell command, 지원되지 않는 model, 일반 terminal에서 직접 실행한 Orca command는 자동 변경하지 않습니다.
+`claude-*` 모델만 상속 대상입니다. `--terminal`, 복합 shell command, 지원되지 않는 model, 일반 terminal에서 직접 실행한 Orca command는 자동 변경하지 않습니다.
 
 현재 Claude Code 세션에 이미 열려 있는 terminal에는 새 설정이 소급되지 않습니다. 새 Claude Code/Orca terminal을 열거나 해당 shell에서 `source ~/.zshrc`를 실행해야 합니다.
 

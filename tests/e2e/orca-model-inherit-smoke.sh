@@ -15,7 +15,6 @@ FAKE_ORCA_WORKTREE_PATH="$WORKTREE_PATH"
 FAKE_BIN="$SMOKE_ROOT/bin"
 LOG_DIR="$SMOKE_ROOT/logs"
 FAKE_ORCA="$FAKE_BIN/orca"
-FAKE_NC="$FAKE_BIN/nc"
 FAKE_CLAUDE="$FAKE_BIN/claude"
 FAKE_LAUNCHER="$ROOT/scripts/claude-orca-launch.sh"
 FAKE_ORCA_LOG="$LOG_DIR/orca.log"
@@ -35,7 +34,6 @@ BRIDGE_STDOUT="$LOG_DIR/bridge.stdout"
 BRIDGE_STDERR="$LOG_DIR/bridge.stderr"
 WORKER_STDOUT="$LOG_DIR/worker.stdout"
 WORKER_STDERR="$LOG_DIR/worker.stderr"
-LOOPBACK_URL='http://127.0.0.1:18765'
 TERMINAL_HANDLE=''
 
 path_is_inside_smoke_root() {
@@ -82,15 +80,6 @@ git -C "$REPO" init -q
 printf '# Orca model inheritance smoke\n' > "$REPO/README.md"
 git -C "$REPO" add README.md
 git -C "$REPO" -c user.name=smoke -c user.email=smoke@example.invalid commit -qm initial
-
-# The fake nc never probes the network. It only models a listening loopback proxy.
-printf '%s\n' \
-  '#!/bin/bash' \
-  'if [ "$#" -eq 3 ] && [ "$1" = "-z" ] && [ "$2" = "127.0.0.1" ] && [ "$3" = "18765" ]; then' \
-  '  exit 0' \
-  'fi' \
-  'exit 1' > "$FAKE_NC"
-chmod +x "$FAKE_NC"
 
 # The fake Claude records argv/environment and never contacts a provider.
 printf '%s\n' \
@@ -156,7 +145,7 @@ printf '%s\n' \
   '    done' \
   '    [ "$task" = "task-1" ]' \
   '    [ "$agent" = "claude" ]' \
-  '    [ "$model" = "gpt-5.6-luna" ]' \
+  '    [ "$model" = "claude-sonnet-5" ]' \
   '    [ "$worktree" = "path:$FAKE_ORCA_WORKTREE_PATH" ]' \
   '    launch_command="ORCA_WORKTREE_ID=wt-smoke FAKE_CLAUDE_LOG=$FAKE_WORKER_CLAUDE_LOG CLAUDE_ORCA_REAL_BIN=$FAKE_CLAUDE bash $FAKE_LAUNCHER --model $model"' \
   '    printf "%s\\n" "$launch_command" > "$FAKE_WORKER_LAUNCH_COMMAND"' \
@@ -180,17 +169,17 @@ export FAKE_ORCA_LOG FAKE_ORCA_WORKTREE_PATH FAKE_TERMINAL_COMMAND FAKE_CLAUDE_L
 : > "$FAKE_WORKER_LAUNCH_COMMAND"
 : > "$FAKE_WORKER_CLAUDE_LOG"
 
-printf '%s\n' '{"message":{"role":"assistant","model":"gpt-5.6-luna"}}' > "$TRANSCRIPT"
+printf '%s\n' '{"message":{"role":"assistant","model":"claude-sonnet-5"}}' > "$TRANSCRIPT"
 jq -cn --arg transcript "$TRANSCRIPT" --arg command \
   "orca worktree create --name task-1 --repo path:$REPO --agent claude --prompt 'read only' --json" \
   '{tool_name:"Bash",tool_input:{command:$command},transcript_path:$transcript}' > "$PAYLOAD"
 
 # Hook rewrite: the payload is synthetic, and the bridge is the only command
-# executed. PATH and the explicit bridge seam ensure no real Orca/nc is used.
+# executed. PATH and the explicit bridge seam ensure no real Orca is used.
 PATH="$FAKE_BIN:$ORIGINAL_PATH" \
   bash "$ROOT/scripts/orca-model-inherit.sh" < "$PAYLOAD" > "$HOOK_JSON"
 
-if jq -e --arg model 'gpt-5.6-luna' --arg bridge "$ROOT/scripts/orca-worktree-model-bridge.sh" '
+if jq -e --arg model 'claude-sonnet-5' --arg bridge "$ROOT/scripts/orca-worktree-model-bridge.sh" '
     .hookSpecificOutput.hookEventName == "PreToolUse" and
     (([39] | implode) as $quote |
      .hookSpecificOutput.updatedInput.command |
@@ -231,7 +220,7 @@ else
   exit 1
 fi
 
-EXPECTED_COMMAND="env ANTHROPIC_BASE_URL=http://127.0.0.1:18765 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 claude --model 'gpt-5.6-luna' --prefill 'read only'"
+EXPECTED_COMMAND="claude --model 'claude-sonnet-5' --prefill 'read only'"
 printf 'CALL\nworktree\ncreate\n--name\ntask-1\n--repo\npath:%s\n--json\nCALL\nterminal\ncreate\n--worktree\npath:%s\n--command\n%s\n--json\n' \
   "$REPO" "$WORKTREE_PATH" "$EXPECTED_COMMAND" > "$EXPECTED_LOG"
 
@@ -258,32 +247,25 @@ else
   exit 1
 fi
 
-if [ "$(grep -oF "$LOOPBACK_URL" "$FAKE_TERMINAL_COMMAND" | wc -l | tr -d ' ')" -eq 1 ] && \
-   grep -Fx "ANTHROPIC_BASE_URL=$LOOPBACK_URL" "$FAKE_CLAUDE_LOG" >/dev/null; then
-  printf '  ✅ GPT launch keeps loopback base URL exactly once\n'
-else
-  printf '  ❌ GPT loopback URL assertion failed\n' >&2
-  exit 1
-fi
-
-if grep -Fx 'args: --model gpt-5.6-luna --prefill read only' "$FAKE_CLAUDE_LOG" >/dev/null && \
-   grep -Fx 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1' "$FAKE_CLAUDE_LOG" >/dev/null; then
-  printf '  ✅ fake Claude received literal GPT model and prefill\n'
+if grep -Fx 'args: --model claude-sonnet-5 --prefill read only' "$FAKE_CLAUDE_LOG" >/dev/null && \
+   grep -Fx 'ANTHROPIC_BASE_URL=<unset>' "$FAKE_CLAUDE_LOG" >/dev/null && \
+   grep -Fx 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=<unset>' "$FAKE_CLAUDE_LOG" >/dev/null; then
+  printf '  ✅ fake Claude received literal model and prefill without proxy env\n'
 else
   printf '  ❌ fake Claude argv/environment mismatch\n' >&2
   exit 1
 fi
 
-# Worker-start coverage uses the same fake Orca/Claude/nc seam. The fake Orca
+# Worker-start coverage uses the same fake Orca/Claude seam. The fake Orca
 # hands its launch command to the real launcher shim, then the fake Claude
-# records the inherited model and proxy environment without a provider call.
+# records the inherited model without a provider call.
 jq -cn --arg transcript "$TRANSCRIPT" --arg worktree "$WORKTREE_PATH" --arg command \
   "orca orchestration worker-start --task task-1 --agent claude --worktree path:$WORKTREE_PATH --model claude-opus-5 --json" \
   '{tool_name:"Bash",tool_input:{command:$command},transcript_path:$transcript}' > "$WORKER_PAYLOAD"
 PATH="$FAKE_BIN:$ORIGINAL_PATH" \
   bash "$ROOT/scripts/orca-model-inherit.sh" < "$WORKER_PAYLOAD" > "$WORKER_HOOK_JSON"
 
-if jq -e --arg model 'gpt-5.6-luna' --arg bridge "$ROOT/scripts/orca-worktree-model-bridge.sh" --arg worktree "$WORKTREE_PATH" '
+if jq -e --arg model 'claude-sonnet-5' --arg bridge "$ROOT/scripts/orca-worktree-model-bridge.sh" --arg worktree "$WORKTREE_PATH" '
     .hookSpecificOutput.hookEventName == "PreToolUse" and
     (([39] | implode) as $quote |
      .hookSpecificOutput.updatedInput.command |
@@ -314,7 +296,7 @@ else
 fi
 
 cp "$CREATE_LOG" "$WORKER_EXPECTED_LOG"
-printf 'CALL\norchestration\nworker-start\n--task\ntask-1\n--agent\nclaude\n--worktree\npath:%s\n--json\n--model\ngpt-5.6-luna\n' \
+printf 'CALL\norchestration\nworker-start\n--task\ntask-1\n--agent\nclaude\n--worktree\npath:%s\n--json\n--model\nclaude-sonnet-5\n' \
   "$WORKTREE_PATH" >> "$WORKER_EXPECTED_LOG"
 if cmp -s "$WORKER_EXPECTED_LOG" "$FAKE_ORCA_LOG" && \
    ! grep -Fx 'claude-opus-5' "$FAKE_ORCA_LOG" >/dev/null; then
@@ -327,17 +309,17 @@ fi
 
 if jq -e '.result.worker.id == "worker-smoke" and .result.worker.status == "ready"' \
     "$WORKER_STDOUT" >/dev/null && \
-   grep -F -- "$FAKE_LAUNCHER --model gpt-5.6-luna" "$FAKE_WORKER_LAUNCH_COMMAND" >/dev/null; then
+   grep -F -- "$FAKE_LAUNCHER --model claude-sonnet-5" "$FAKE_WORKER_LAUNCH_COMMAND" >/dev/null; then
   printf '  ✅ worker-start launch command reached claude-orca-launch.sh\n'
 else
   printf '  ❌ worker-start launch command assertion failed\n' >&2
   exit 1
 fi
 
-if grep -Fx 'args: --model gpt-5.6-luna' "$FAKE_WORKER_CLAUDE_LOG" >/dev/null && \
-   grep -Fx "ANTHROPIC_BASE_URL=$LOOPBACK_URL" "$FAKE_WORKER_CLAUDE_LOG" >/dev/null && \
-   grep -Fx 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1' "$FAKE_WORKER_CLAUDE_LOG" >/dev/null; then
-  printf '  ✅ worker-start inherited GPT model and loopback/disable environment\n'
+if grep -Fx 'args: --model claude-sonnet-5' "$FAKE_WORKER_CLAUDE_LOG" >/dev/null && \
+   grep -Fx 'ANTHROPIC_BASE_URL=<unset>' "$FAKE_WORKER_CLAUDE_LOG" >/dev/null && \
+   grep -Fx 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=<unset>' "$FAKE_WORKER_CLAUDE_LOG" >/dev/null; then
+  printf '  ✅ worker-start inherited the main model without proxy environment\n'
 else
   printf '  ❌ worker-start launcher argv/environment mismatch\n' >&2
   exit 1
@@ -356,22 +338,6 @@ if (
   printf '  ✅ Claude fixture keeps direct Anthropic base URL absent\n'
 else
   printf '  ❌ Claude direct-provider fixture mismatch\n' >&2
-  exit 1
-fi
-
-if (
-  unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-  ANTHROPIC_BASE_URL="$LOOPBACK_URL" \
-    ORCA_WORKTREE_ID='fixture-claude-loopback' \
-    CLAUDE_ORCA_REAL_BIN="$FAKE_CLAUDE" \
-    PATH="$FAKE_BIN:$ORIGINAL_PATH" \
-    bash "$ROOT/scripts/claude-orca-launch.sh" --model claude-opus-5
-) && \
-   grep -Fx 'args: --model claude-opus-5' "$FAKE_CLAUDE_LOG" >/dev/null && \
-   grep -Fx "ANTHROPIC_BASE_URL=$LOOPBACK_URL" "$FAKE_CLAUDE_LOG" >/dev/null; then
-  printf '  ✅ Claude fixture preserves loopback parent base URL\n'
-else
-  printf '  ❌ Claude loopback-provider fixture mismatch\n' >&2
   exit 1
 fi
 

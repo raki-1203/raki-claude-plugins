@@ -12,7 +12,6 @@ ORIGINAL_PATH="$PATH"
 FAKE_BIN_DIR="$TMPDIR_ROOT/bin"
 FAKE_CLAUDE="$TMPDIR_ROOT/fake-claude.sh"
 FAKE_CLAUDE_LOG="$TMPDIR_ROOT/claude.log"
-FAKE_NC="$FAKE_BIN_DIR/nc"
 FAKE_STDOUT="$TMPDIR_ROOT/stdout"
 FAKE_STDERR="$TMPDIR_ROOT/stderr"
 
@@ -20,12 +19,6 @@ pass() { PASS=$((PASS + 1)); printf '  ✅ %s\n' "$1"; }
 fail() { FAIL=$((FAIL + 1)); printf '  ❌ %s%s\n' "$1" "${2:+ — $2}"; }
 
 mkdir -p "$FAKE_BIN_DIR"
-printf '%s\n' \
-  '#!/bin/bash' \
-  'if [ "${FAKE_NC_RESULT:-fail}" = success ]; then exit 0; fi' \
-  'exit 1' > "$FAKE_NC"
-chmod +x "$FAKE_NC"
-
 printf '%s\n' \
   '#!/bin/bash' \
   'printf "args:" >> "$FAKE_CLAUDE_LOG"' \
@@ -36,15 +29,14 @@ printf '%s\n' \
 chmod +x "$FAKE_CLAUDE"
 
 run_launch() {
-  local marker="$1" probe="$2" base_url="$3" disable="$4"
-  shift 4
+  local marker="$1" base_url="$2" disable="$3"
+  shift 3
   : > "$FAKE_CLAUDE_LOG"
   : > "$FAKE_STDOUT"
   : > "$FAKE_STDERR"
   set +e
   (
     export PATH="$FAKE_BIN_DIR:$ORIGINAL_PATH"
-    export FAKE_NC_RESULT="$probe"
     export FAKE_CLAUDE_LOG
     export CLAUDE_ORCA_REAL_BIN="$FAKE_CLAUDE"
     case "$marker" in
@@ -80,42 +72,37 @@ assert_record() {
 
 printf '=== claude-orca-launch unit tests ===\n'
 
-run_launch token success unset unset \
-  --model gpt-5.6-luna --dangerously-skip-permissions
-assert_record "Orca GPT launch adds loopback env" \
-  "--model gpt-5.6-luna --dangerously-skip-permissions" \
-  "http://127.0.0.1:18765" "1"
+run_launch token unset unset \
+  --model claude-sonnet-5 --dangerously-skip-permissions
+assert_record "Orca token launch is a pass-through" \
+  "--model claude-sonnet-5 --dangerously-skip-permissions" \
+  "<unset>" "<unset>"
 
-run_launch worktree success unset unset \
-  --model=gpt-5.6-luna[1m] --dangerously-skip-permissions
+run_launch worktree unset unset \
+  --model=claude-opus-5[1m] --dangerously-skip-permissions
 assert_record "ORCA_WORKTREE_ID and --model= with [1m]" \
-  "--model=gpt-5.6-luna[1m] --dangerously-skip-permissions" \
-  "http://127.0.0.1:18765" "1"
+  "--model=claude-opus-5[1m] --dangerously-skip-permissions" \
+  "<unset>" "<unset>"
 
-run_launch token success existing 0 \
+run_launch token existing 0 \
   --model claude-opus-5
 assert_record "Claude model preserves environment" \
   "--model claude-opus-5" "existing" "0"
 
-run_launch token success existing 0 \
+run_launch token existing 0 \
   --model composer-2.5
 assert_record "Unknown model preserves environment" \
   "--model composer-2.5" "existing" "0"
 
-run_launch token failure existing 0 \
-  --model gpt-5.6-luna
-assert_record "Unavailable proxy preserves GPT environment" \
-  "--model gpt-5.6-luna" "existing" "0"
-
-run_launch token success existing 0 \
+run_launch token existing 0 \
   --dangerously-skip-permissions
 assert_record "Missing model preserves environment" \
   "--dangerously-skip-permissions" "existing" "0"
 
-run_launch none success existing 0 \
-  --model gpt-5.6-luna --dangerously-skip-permissions
+run_launch none existing 0 \
+  --model claude-sonnet-5 --dangerously-skip-permissions
 assert_record "No Orca marker is a pass-through" \
-  "--model gpt-5.6-luna --dangerously-skip-permissions" "existing" "0"
+  "--model claude-sonnet-5 --dangerously-skip-permissions" "existing" "0"
 
 printf '\n=== %s passed, %s failed ===\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

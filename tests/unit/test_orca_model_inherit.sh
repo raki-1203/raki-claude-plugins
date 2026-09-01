@@ -11,18 +11,11 @@ FAIL=0
 pass() { PASS=$((PASS + 1)); printf '  ✅ %s\n' "$1"; }
 fail() { FAIL=$((FAIL + 1)); printf '  ❌ %s%s\n' "$1" "${2:+ — $2}"; }
 
-mkdir -p "$TMPDIR_ROOT/bin-up" "$TMPDIR_ROOT/bin-down" "$TMPDIR_ROOT/bin-no-orca"
-printf '#!/bin/bash\nexit 0\n' > "$TMPDIR_ROOT/bin-up/nc"
-printf '#!/bin/bash\nexit 1\n' > "$TMPDIR_ROOT/bin-down/nc"
-printf '#!/bin/bash\nexit 0\n' > "$TMPDIR_ROOT/bin-no-orca/nc"
+mkdir -p "$TMPDIR_ROOT/bin-up" "$TMPDIR_ROOT/bin-no-orca"
 printf '#!/bin/bash\nexit 0\n' > "$TMPDIR_ROOT/bin-up/orca"
-printf '#!/bin/bash\nexit 0\n' > "$TMPDIR_ROOT/bin-down/orca"
-chmod +x "$TMPDIR_ROOT/bin-up/nc" "$TMPDIR_ROOT/bin-down/nc" \
-  "$TMPDIR_ROOT/bin-no-orca/nc" "$TMPDIR_ROOT/bin-up/orca" \
-  "$TMPDIR_ROOT/bin-down/orca"
+chmod +x "$TMPDIR_ROOT/bin-up/orca"
 
-PATH_WITH_PROXY="$TMPDIR_ROOT/bin-up:/usr/bin:/bin"
-PATH_WITHOUT_PROXY="$TMPDIR_ROOT/bin-down:/usr/bin:/bin"
+PATH_WITH_ORCA="$TMPDIR_ROOT/bin-up:/usr/bin:/bin"
 PATH_WITHOUT_ORCA="$TMPDIR_ROOT/bin-no-orca:/usr/bin:/bin"
 
 make_payload() {
@@ -84,7 +77,7 @@ assert_rewritten_without_old_model() {
 }
 
 assert_noop() {
-  local name="$1" input="$2" path="${3:-$PATH_WITH_PROXY}" hook="${4:-$HOOK}" out
+  local name="$1" input="$2" path="${3:-$PATH_WITH_ORCA}" hook="${4:-$HOOK}" out
   if ! out=$(run_hook "$input" "$path" "$hook"); then
     fail "$name" "no-op이 non-zero로 종료"
   elif [ -z "$out" ]; then
@@ -96,7 +89,7 @@ assert_noop() {
 
 assert_closed_stdin() {
   local name="$1" out
-  if ! out=$(PATH="$PATH_WITH_PROXY" bash "$HOOK" 0<&- 2>/dev/null); then
+  if ! out=$(PATH="$PATH_WITH_ORCA" bash "$HOOK" 0<&- 2>/dev/null); then
     fail "$name" "닫힌 stdin이 non-zero로 종료"
   elif [ -z "$out" ]; then
     pass "$name"
@@ -123,23 +116,23 @@ assert_literal_model_execution() {
   fi
 }
 
-printf '%s\n' '{"message":{"role":"assistant","model":"gpt-5.6-luna"}}' \
+printf '%s\n' '{"message":{"role":"assistant","model":"claude-sonnet-5"}}' \
   '{"message":{"role":"assistant","model":"<synthetic>"}}' \
   '{"message":{"role":"assistant","model":"composer-2.5"}}' \
-  '{"message":{"role":"assistant","model":"gpt-5.6-luna"}}' \
-  > "$TMPDIR_ROOT/orca-gpt.jsonl"
+  '{"message":{"role":"assistant","model":"claude-sonnet-5"}}' \
+  > "$TMPDIR_ROOT/orca-main.jsonl"
 printf '%s\n' '{"message":{"role":"assistant","model":"claude-opus-5"}}' \
   > "$TMPDIR_ROOT/orca-claude.jsonl"
 printf '%s\n' '{"message":{"role":"assistant","model":"composer-2.5"}}' \
   > "$TMPDIR_ROOT/orca-unknown.jsonl"
-printf '%s\n' '{"message":{"role":"assistant","model":"gpt-5.6-luna[1m]"}}' \
-  > "$TMPDIR_ROOT/orca-gpt-1m.jsonl"
+printf '%s\n' '{"message":{"role":"assistant","model":"claude-opus-5[1m]"}}' \
+  > "$TMPDIR_ROOT/orca-main-1m.jsonl"
 printf '%s\n' '{not-json' > "$TMPDIR_ROOT/orca-invalid.jsonl"
 
-GPT="$TMPDIR_ROOT/orca-gpt.jsonl"
+MAIN="$TMPDIR_ROOT/orca-main.jsonl"
 CLAUDE="$TMPDIR_ROOT/orca-claude.jsonl"
 UNKNOWN="$TMPDIR_ROOT/orca-unknown.jsonl"
-GPT_1M="$TMPDIR_ROOT/orca-gpt-1m.jsonl"
+MAIN_1M="$TMPDIR_ROOT/orca-main-1m.jsonl"
 
 MISSING_BRIDGE_DIR="$TMPDIR_ROOT/missing-bridge"
 MISSING_BRIDGE_HOOK="$MISSING_BRIDGE_DIR/orca-model-inherit.sh"
@@ -160,85 +153,83 @@ printf '#!/bin/bash\nexit 0\n' > "$NONEXECUTABLE_BRIDGE_DIR/orca-worktree-model-
 printf '%s\n' '#!/bin/bash' 'printf "%s\n" "$@" > "$GLOB_ARGV_LOG"' > "$GLOB_BRIDGE"
 chmod 644 "$NONEXECUTABLE_BRIDGE_DIR/orca-worktree-model-bridge.sh"
 chmod +x "$GLOB_BRIDGE"
-: > "$GLOB_CWD/gpt-5.6-luna1"
-: > "$GLOB_CWD/gpt-5.6-lunam"
+: > "$GLOB_CWD/claude-sonnet-51"
+: > "$GLOB_CWD/claude-sonnet-5m"
 
 printf '=== orca-model-inherit unit tests ===\n'
 
 assert_rewritten "worker-start model 교체" \
-  "$(make_payload 'orca orchestration worker-start --task task-1 --agent claude --model sonnet' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna"
+  "$(make_payload 'orca orchestration worker-start --task task-1 --agent claude --model sonnet' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5"
 assert_rewritten "worker-start 기존 model 없음" \
-  "$(make_payload 'orca orchestration worker-start --task task-1 --agent claude' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna"
+  "$(make_payload 'orca orchestration worker-start --task task-1 --agent claude' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5"
 assert_rewritten_without_old_model "worker-start --model= 교체" \
-  "$(make_payload 'orca orchestration worker-start --task task-1 --agent=claude --model=sonnet' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna"
+  "$(make_payload 'orca orchestration worker-start --task task-1 --agent=claude --model=sonnet' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5"
 assert_rewritten "worktree create 기본 경로" \
-  "$(make_payload "orca worktree create --name task-1 --agent claude --prompt 'read only'" "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna" "'read only'"
+  "$(make_payload "orca worktree create --name task-1 --agent claude --prompt 'read only'" "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5" "'read only'"
 assert_rewritten "worktree create --agent=claude" \
-  "$(make_payload 'orca worktree create --name task-1 --agent=claude' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna"
+  "$(make_payload 'orca worktree create --name task-1 --agent=claude' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5"
 assert_rewritten "quoted prompt 특수문자 보존" \
-  "$(make_payload "orca worktree create --name task-1 --agent claude --prompt 'read only: \$HOME && do not edit'" "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna" "'read only: \$HOME && do not edit'"
+  "$(make_payload "orca worktree create --name task-1 --agent claude --prompt 'read only: \$HOME && do not edit'" "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5" "'read only: \$HOME && do not edit'"
 assert_rewritten "quoted command substitution prompt 보존" \
-  "$(make_payload "orca worktree create --name task-1 --agent claude --prompt 'literal: \$(printf no)'" "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna" "'literal: \$(printf no)'"
+  "$(make_payload "orca worktree create --name task-1 --agent claude --prompt 'literal: \$(printf no)'" "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5" "'literal: \$(printf no)'"
 assert_rewritten "double quoted prompt 특수문자 보존" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "read only: $HOME && do not edit"' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna" '"read only: $HOME && do not edit"'
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "read only: $HOME && do not edit"' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5" '"read only: $HOME && do not edit"'
 assert_rewritten "escaped double quoted command substitution 보존" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: \$(printf no)"' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna" '"literal: \$(printf no)"'
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: \$(printf no)"' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5" '"literal: \$(printf no)"'
 assert_rewritten "escaped double quoted backtick 보존" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: \`printf no\`"' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna" '"literal: \`printf no\`"'
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: \`printf no\`"' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "claude-sonnet-5" '"literal: \`printf no\`"'
 assert_rewritten "Claude model worktree" \
   "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "read only"' "$CLAUDE" Bash)" \
-  "$PATH_WITH_PROXY" "claude-opus-5"
+  "$PATH_WITH_ORCA" "claude-opus-5"
 
 assert_noop "worker-start --terminal" \
-  "$(make_payload 'orca orchestration worker-start --task task-1 --terminal term_1' "$GPT" Bash)"
+  "$(make_payload 'orca orchestration worker-start --task task-1 --terminal term_1' "$MAIN" Bash)"
 assert_noop "worktree non-Claude agent" \
-  "$(make_payload 'orca worktree create --name task-1 --agent codex' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent codex' "$MAIN" Bash)"
 assert_noop "worktree Claude와 다른 agent 중복" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --agent codex' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --agent codex' "$MAIN" Bash)"
 assert_noop "worktree Claude agent 중복" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --agent=claude' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --agent=claude' "$MAIN" Bash)"
 assert_noop "compound command" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude && rm -rf /tmp/x' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude && rm -rf /tmp/x' "$MAIN" Bash)"
 assert_noop "semicolon command" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude; rm -rf /tmp/x' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude; rm -rf /tmp/x' "$MAIN" Bash)"
 assert_noop "pipeline command" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude | cat' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude | cat' "$MAIN" Bash)"
 assert_noop "redirection command" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude > /tmp/x' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude > /tmp/x' "$MAIN" Bash)"
 assert_noop "unquoted command substitution" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude $(touch /tmp/x)' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude $(touch /tmp/x)' "$MAIN" Bash)"
 assert_noop "double quoted command substitution" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: $(touch /tmp/x)"' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: $(touch /tmp/x)"' "$MAIN" Bash)"
 assert_noop "double quoted backtick substitution" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: `touch /tmp/x`"' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude --prompt "literal: `touch /tmp/x`"' "$MAIN" Bash)"
 assert_noop "double quoted non-Claude agent escape" \
-  "$(make_payload 'orca worktree create --name task-1 --agent "clau\de"' "$GPT" Bash)"
+  "$(make_payload 'orca worktree create --name task-1 --agent "clau\de"' "$MAIN" Bash)"
 assert_noop "일반 Read tool" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT" Read)"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$MAIN" Read)"
 assert_noop "일반 Bash command" \
-  "$(make_payload 'printf ready' "$GPT" Bash)"
+  "$(make_payload 'printf ready' "$MAIN" Bash)"
 assert_noop "지원하지 않는 provider model" \
   "$(make_payload 'orca worktree create --name task-1 --agent claude' "$UNKNOWN" Bash)"
-assert_noop "GPT proxy unavailable" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT" Bash)" "$PATH_WITHOUT_PROXY"
 assert_noop "orca executable missing" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT" Bash)" "$PATH_WITHOUT_ORCA"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$MAIN" Bash)" "$PATH_WITHOUT_ORCA"
 assert_noop "bridge missing" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "$MISSING_BRIDGE_HOOK"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "$MISSING_BRIDGE_HOOK"
 assert_noop "bridge non-executable" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT" Bash)" \
-  "$PATH_WITH_PROXY" "$NONEXECUTABLE_BRIDGE_HOOK"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$MAIN" Bash)" \
+  "$PATH_WITH_ORCA" "$NONEXECUTABLE_BRIDGE_HOOK"
 assert_noop "transcript 누락" \
   "$(make_payload 'orca worktree create --name task-1 --agent claude' "$TMPDIR_ROOT/missing.jsonl" Bash)"
 assert_noop "transcript 잘못된 JSON" \
@@ -246,14 +237,14 @@ assert_noop "transcript 잘못된 JSON" \
 assert_noop "잘못된 stdin JSON" '{not-json'
 assert_closed_stdin "닫힌 stdin"
 assert_noop "앞 공백 command" \
-  "$(make_payload ' orca worktree create --name task-1 --agent claude' "$GPT" Bash)"
+  "$(make_payload ' orca worktree create --name task-1 --agent claude' "$MAIN" Bash)"
 assert_rewritten "모델 [1m] suffix 보존" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT_1M" Bash)" \
-  "$PATH_WITH_PROXY" "gpt-5.6-luna[1m]"
+  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$MAIN_1M" Bash)" \
+  "$PATH_WITH_ORCA" "claude-opus-5[1m]"
 assert_literal_model_execution "quoted bridge/model executes literal [1m]" \
-  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$GPT_1M" Bash)" \
-  "$PATH_WITH_PROXY" "$GLOB_HOOK" \
-  $'--model\ngpt-5.6-luna[1m]\nworktree\ncreate\n--name\ntask-1\n--agent\nclaude'
+  "$(make_payload 'orca worktree create --name task-1 --agent claude' "$MAIN_1M" Bash)" \
+  "$PATH_WITH_ORCA" "$GLOB_HOOK" \
+  $'--model\nclaude-opus-5[1m]\nworktree\ncreate\n--name\ntask-1\n--agent\nclaude'
 
 printf '\n=== %s passed, %s failed ===\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

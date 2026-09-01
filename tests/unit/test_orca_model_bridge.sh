@@ -16,19 +16,15 @@ FAKE_ORCA_ENV_LOG="$TMPDIR_ROOT/orca.env"
 FAKE_ORCA_STDOUT="$TMPDIR_ROOT/stdout"
 FAKE_ORCA_STDERR="$TMPDIR_ROOT/stderr"
 EXPECTED_LOG="$TMPDIR_ROOT/expected.log"
-FAKE_NC_FAIL=0
 FAKE_ORCA_CREATE_MODE=valid
 FAKE_ORCA_TERMINAL_FAIL=0
 FAKE_ORCA_WORKTREE_PATH='/private/tmp/orca-smoke/task-1'
-export FAKE_NC_FAIL FAKE_ORCA_CREATE_MODE FAKE_ORCA_TERMINAL_FAIL FAKE_ORCA_WORKTREE_PATH
+export FAKE_ORCA_CREATE_MODE FAKE_ORCA_TERMINAL_FAIL FAKE_ORCA_WORKTREE_PATH
 
 pass() { PASS=$((PASS + 1)); printf '  ✅ %s\n' "$1"; }
 fail() { FAIL=$((FAIL + 1)); printf '  ❌ %s%s\n' "$1" "${2:+ — $2}"; }
 
 mkdir -p "$TMPDIR_ROOT/bin"
-printf '%s\n' '#!/bin/bash' 'if [ "${FAKE_NC_FAIL:-0}" -eq 1 ]; then exit 1; fi' 'exit 0' > "$TMPDIR_ROOT/bin/nc"
-chmod +x "$TMPDIR_ROOT/bin/nc"
-
 printf '%s\n' \
   '#!/bin/bash' \
   'printf "CALL\\n" >> "$FAKE_ORCA_LOG"' \
@@ -76,9 +72,6 @@ run_bridge() {
     LAST_STATUS=$?
   else
     local base_url="$base_mode"
-    if [ "$base_mode" = "loopback" ]; then
-      base_url='http://127.0.0.1:18765'
-    fi
     (
       unset CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
       ANTHROPIC_BASE_URL="$base_url" \
@@ -142,12 +135,11 @@ assert_json_envelope() {
 printf '=== orca-worktree-model-bridge unit tests ===\n'
 
 # worker-start replaces every existing model and appends the current model.
-FAKE_NC_FAIL=0
-run_bridge unset --model gpt-5.6-luna \
+run_bridge unset --model claude-sonnet-5 \
   orchestration worker-start --task task-1 --agent claude --model sonnet
 if [ "$LAST_STATUS" -eq 0 ]; then
   assert_log "worker-start model 교체" \
-    orchestration worker-start --task task-1 --agent claude --model gpt-5.6-luna
+    orchestration worker-start --task task-1 --agent claude --model claude-sonnet-5
 else
   fail "worker-start model 교체" "bridge가 non-zero로 종료"
 fi
@@ -168,7 +160,7 @@ else
   fail "worker-start --model= 제거" "bridge 호출 계약 불일치"
 fi
 
-run_bridge unset --model gpt-5.6-luna \
+run_bridge unset --model claude-sonnet-5 \
   orchestration worker-start --task task-1 --agent claude --terminal term-1
 if [ "$LAST_STATUS" -eq 0 ]; then
   assert_no_calls "worker-start --terminal no-op"
@@ -176,7 +168,7 @@ else
   fail "worker-start --terminal no-op" "no-op이 non-zero로 종료"
 fi
 
-run_bridge unset --model gpt-5.6-luna \
+run_bridge unset --model claude-sonnet-5 \
   orchestration worker-start --task task-1 --agent codex
 if [ "$LAST_STATUS" -eq 0 ]; then
   assert_no_calls "worker-start non-Claude agent no-op"
@@ -184,21 +176,10 @@ else
   fail "worker-start non-Claude agent no-op" "no-op이 non-zero로 종료"
 fi
 
-FAKE_NC_FAIL=1
-run_bridge unset --model gpt-5.6-luna \
-  orchestration worker-start --task task-1 --agent claude
-if [ "$LAST_STATUS" -eq 0 ]; then
-  assert_no_calls "worker-start GPT proxy unavailable no-op"
-else
-  fail "worker-start GPT proxy unavailable no-op" "proxy unavailable이 non-zero로 종료"
-fi
-FAKE_NC_FAIL=0
-
 # worktree create strips agent/prompt/model, preserves creation flags, then creates a terminal.
-FAKE_NC_FAIL=0
 FAKE_ORCA_CREATE_MODE=valid
 FAKE_ORCA_TERMINAL_FAIL=0
-run_bridge unset --model gpt-5.6-luna \
+run_bridge unset --model claude-sonnet-5 \
   worktree create --name task-1 --repo path:/private/tmp/orca-smoke \
   --agent claude --prompt 'read only: $HOME && do not edit' --json
 if [ "$LAST_STATUS" -eq 0 ]; then
@@ -208,7 +189,7 @@ else
 fi
 if [ "$LAST_STATUS" -eq 0 ]; then
   assert_calls "worktree two-phase 호출" 2
-  EXPECTED_COMMAND="env ANTHROPIC_BASE_URL=http://127.0.0.1:18765 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 claude --model 'gpt-5.6-luna' --prefill 'read only: \$HOME && do not edit'"
+  EXPECTED_COMMAND="claude --model 'claude-sonnet-5' --prefill 'read only: \$HOME && do not edit'"
   printf 'CALL\nworktree\ncreate\n--name\ntask-1\n--repo\npath:/private/tmp/orca-smoke\n--json\nCALL\nterminal\ncreate\n--worktree\npath:/private/tmp/orca-smoke/task-1\n--command\n%s\n--json\n' "$EXPECTED_COMMAND" > "$EXPECTED_LOG"
   if diff -u "$EXPECTED_LOG" "$FAKE_ORCA_LOG" >/dev/null 2>&1; then
     pass "worktree argv·prompt quote"
@@ -217,20 +198,20 @@ if [ "$LAST_STATUS" -eq 0 ]; then
   fi
   if grep -F -- 'ANTHROPIC_BASE_URL=<unset>' "$FAKE_ORCA_ENV_LOG" >/dev/null 2>&1 && \
      grep -F -- 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=<unset>' "$FAKE_ORCA_ENV_LOG" >/dev/null 2>&1; then
-    pass "GPT parent 환경 기록"
+    pass "parent 환경 기록"
   else
-    fail "GPT parent 환경 기록" "parent 환경이 예상과 다름"
+    fail "parent 환경 기록" "parent 환경이 예상과 다름"
   fi
 fi
 
 # The optional [1m] suffix must stay literal even when a matching filename exists.
 GLOB_WORKTREE="$TMPDIR_ROOT/worktree/task-1"
 mkdir -p "$GLOB_WORKTREE"
-touch "$GLOB_WORKTREE/gpt-5.6-luna1"
+touch "$GLOB_WORKTREE/claude-sonnet-51"
 FAKE_ORCA_WORKTREE_PATH="$GLOB_WORKTREE"
-run_bridge unset --model 'gpt-5.6-luna[1m]' \
+run_bridge unset --model 'claude-opus-5[1m]' \
   worktree create --name task-1 --agent claude --prompt x
-EXPECTED_GLOB_COMMAND="env ANTHROPIC_BASE_URL=http://127.0.0.1:18765 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 claude --model 'gpt-5.6-luna[1m]' --prefill 'x'"
+EXPECTED_GLOB_COMMAND="claude --model 'claude-opus-5[1m]' --prefill 'x'"
 if [ "$LAST_STATUS" -eq 0 ] && [ "$(call_count)" -eq 2 ] && \
    grep -F -- "$EXPECTED_GLOB_COMMAND" "$FAKE_ORCA_LOG" >/dev/null 2>&1; then
   pass "[1m] model shell quote"
@@ -238,22 +219,6 @@ else
   fail "[1m] model shell quote" "launch command에서 model glob이 quote되지 않음"
 fi
 FAKE_ORCA_WORKTREE_PATH='/private/tmp/orca-smoke/task-1'
-
-run_bridge loopback --model claude-opus-5 \
-  worktree create --name task-1 --agent claude --prompt 'read only'
-if [ "$LAST_STATUS" -eq 0 ] && grep -F -- \
-    'env ANTHROPIC_BASE_URL=http://127.0.0.1:18765 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 claude --model '\''claude-opus-5'\'' --prefill '\''read only'\''' \
-    "$FAKE_ORCA_LOG" >/dev/null 2>&1; then
-  pass "Claude loopback 환경 전달"
-else
-  fail "Claude loopback 환경 전달" "loopback 환경이 launch command에 없음"
-fi
-if grep -F -- 'ANTHROPIC_BASE_URL=http://127.0.0.1:18765' "$FAKE_ORCA_ENV_LOG" >/dev/null 2>&1 && \
-   grep -F -- 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=<unset>' "$FAKE_ORCA_ENV_LOG" >/dev/null 2>&1; then
-  pass "Claude parent 환경 기록"
-else
-  fail "Claude parent 환경 기록" "parent loopback 환경이 fake Orca에 없음"
-fi
 
 run_bridge https://api.example.test --model claude-opus-5 \
   worktree create --name task-1 --agent claude --prompt 'read only'
@@ -263,7 +228,7 @@ else
   fail "Claude 외부 base URL 차단" "외부 base URL이 launch command에 전달됨"
 fi
 
-run_bridge unset --model gpt-5.6-luna \
+run_bridge unset --model claude-sonnet-5 \
   worktree create --name task-1 --agent claude --prompt 'read only'
 if [ "$LAST_STATUS" -eq 0 ] && [ "$(call_count)" -eq 2 ]; then
   if grep -F -- 'terminal:' "$FAKE_ORCA_STDOUT" >/dev/null 2>&1 && \
@@ -277,17 +242,7 @@ else
 fi
 
 # Fail-open/no-cleanup cases.
-FAKE_NC_FAIL=1
-run_bridge unset --model gpt-5.6-luna \
-  worktree create --name task-1 --agent claude --prompt x
-if [ "$LAST_STATUS" -eq 0 ]; then
-  assert_no_calls "GPT proxy unavailable no-op"
-else
-  fail "GPT proxy unavailable no-op" "proxy unavailable이 non-zero로 종료"
-fi
-FAKE_NC_FAIL=0
-
-run_bridge unset --model gpt-5.6-luna \
+run_bridge unset --model claude-sonnet-5 \
   worktree create --name task-1 --agent codex
 if [ "$LAST_STATUS" -eq 0 ]; then
   assert_no_calls "worktree non-Claude agent no-op"
