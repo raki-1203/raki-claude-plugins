@@ -4,6 +4,7 @@
 
 ### Added
 
+- `wiki-query`: 판정형 질문("왜 뺐어", "지금 뭐 써?", "X 도입할까?")이면 `index.md` 보다 먼저 `verdicts.md` 를 읽는다. 판정이 있으면 "이미 판정됨"에서 답변을 시작해 모르고 재검토를 시작하는 것을 막고, `기각`(안 써보고 내린 판단)과 `제거`(써보고 내린 판단)를 구분해 전한다 — 재검토 가치가 다르기 때문. 판정이 없으면 "이력 없음"을 명시하고 일반 답변형으로 계속한다.
 - `wiki-wrap-up`: 도구·접근 판정을 vault 루트 `verdicts.md` 색인에 기록. 판별 3조건(이름 붙는 대상 / 채택·기각·제거로 떨어짐 / 근거 페이지 존재)을 만족할 때만 올린다. 근거 본문은 상세 페이지에 그대로 두고 색인에는 한 줄과 링크만 둔다. 근거: WikiSkill(arXiv:2608.27454) `skill-impact.md` 대조 — `docs/superpowers/specs/2026-09-09-verdict-register-design.md`
 - **Threads 작업 프롬프트 자동 라우터** — `UserPromptSubmit` hook이 요청 유형을 결정론적으로 분류해 7개 원문 중 하나만 `additionalContext`에 주입한다. 모호한 요청은 기존 동작을 유지한다.
 - Orca `worker-start`와 `worktree create --agent claude`에 Main 세션 model/provider 상속 bridge 추가
