@@ -4,8 +4,14 @@
 
 ### Added
 
+- `wiki-wrap-up`: 도구·접근 판정을 vault 루트 `verdicts.md` 색인에 기록. 판별 3조건(이름 붙는 대상 / 채택·기각·제거로 떨어짐 / 근거 페이지 존재)을 만족할 때만 올린다. 근거 본문은 상세 페이지에 그대로 두고 색인에는 한 줄과 링크만 둔다. 근거: WikiSkill(arXiv:2608.27454) `skill-impact.md` 대조 — `docs/superpowers/specs/2026-09-09-verdict-register-design.md`
 - **Threads 작업 프롬프트 자동 라우터** — `UserPromptSubmit` hook이 요청 유형을 결정론적으로 분류해 7개 원문 중 하나만 `additionalContext`에 주입한다. 모호한 요청은 기존 동작을 유지한다.
 - Orca `worker-start`와 `worktree create --agent claude`에 Main 세션 model/provider 상속 bridge 추가
+
+### Fixed
+
+- `wiki-lint`: `confidence` 누락을 데이터 갭으로 잡으면서 같은 파일의 v3 스키마 검사는 `confidence` 를 금지하던 자기모순 제거. 스캔 대상에 `wiki/projects/`·`wiki/meetings/` 추가(레거시 `projects/` 만 있어 현재 vault의 22개 페이지가 통째로 빠졌다). `meeting`·`deliverable` 이 정당하게 비우는 필드를 갭으로 오탐하지 않도록 타입별 예외표 추가.
+- `wiki-ingest`: `description` "20자 이내" 규정 폐기. vault 실측 중앙값 65자이고 20자 이하는 5%뿐이며, 규정을 어긴 쪽이 실제로 유용했다. 색인 한 줄이 "페이지를 열지 말지"를 판단하게 해야 한다는 요구로 교체.
 
 ## [3.15.0] — 2026-08-24
 

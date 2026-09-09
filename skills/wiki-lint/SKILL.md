@@ -35,6 +35,8 @@ wiki/ 하위 모든 .md 파일을 읽음:
 - `wiki/entities/`
 - `wiki/sources/`
 - `wiki/comparisons/`
+- `wiki/projects/`
+- `wiki/meetings/`
 - `projects/` (레거시 폴더, 존재하는 경우)
 - `index.md`, `log.md`
 
@@ -63,9 +65,15 @@ frontmatter가 불완전한 페이지:
 - `description` 누락
 - `sources` 비어있음
 - `related` 비어있음
-- `confidence` 누락
 - `comment` 누락 (기존 페이지 마이그레이션 대상)
 → 보완 제안.
+
+**타입별 예외 — 아래는 갭이 아니다** (vault CLAUDE.md 스키마):
+
+| type | 없어도 되는 필드 | 이유 |
+|------|-----------------|------|
+| `meeting` | `updated` · `sources` · `comment` | 회의는 갱신되지 않고, 원본은 `raw/meetings/` 동명 파일이며, 저장 이유가 큐레이션 판단이 아니라 "회의가 열렸다" 이다 |
+| `deliverable` | `sources` | 산출물은 프로젝트 페이지에서 파생된다 |
 
 **comment 누락 특별 처리:**
 기존에 생성된 페이지는 대부분 `comment` 필드가 없다. wiki-lint는 이를 데이터 갭으로 탐지하되, **자동으로 채우지 않고** 사용자에게 다음과 같이 물어본다:
