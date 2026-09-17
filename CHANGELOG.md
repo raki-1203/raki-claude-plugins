@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- `source-fetch`: Threads의 `N/M` 배지를 이미지 캐러셀로 단정하던 문제. 실제로는 작성자가 연달아 올린 **N개의 독립 게시물(self-thread)** 인 경우가 흔해 스와이프·방향키로 넘길 대상이 아예 없고, 캐러셀 전제로 접근하면 12가지 우회를 시도해도 전부 실패한다. `references/fetchers.md` 규칙 4가 이때 "미확보" 조기 이탈을 허용해 **본문 11개 중 1개만 수집하고 종료**했다(2026-09-17 `@choi.openai/post/DdV8yzpD-BQ` 실측). 규칙 4를 판별 우선으로 바꾸고 "Threads self-thread" 섹션 신설 — API 판별(`carousel_media` vs `self_thread_info`), permalink 리다이렉트 회피(피드에서 링크 클릭), 답글 영역에 2~N번이 전부 렌더된다는 사실, CDN 원본은 `javascript_tool` 차단을 우회하지 말고 `read_network_requests`로 받을 것(추적은 첫 호출부터 시작), `ig_cache_key` base64 디코드로 이미지↔게시물 매핑.
 - `wiki-lint`: `confidence` 누락을 데이터 갭으로 잡으면서 같은 파일의 v3 스키마 검사는 `confidence` 를 금지하던 자기모순 제거. 스캔 대상에 `wiki/projects/`·`wiki/meetings/` 추가(레거시 `projects/` 만 있어 현재 vault의 22개 페이지가 통째로 빠졌다). `meeting`·`deliverable` 이 정당하게 비우는 필드를 갭으로 오탐하지 않도록 타입별 예외표 추가.
 - `wiki-ingest`: `description` "20자 이내" 규정 폐기. vault 실측 중앙값 65자이고 20자 이하는 5%뿐이며, 규정을 어긴 쪽이 실제로 유용했다. 색인 한 줄이 "페이지를 열지 말지"를 판단하게 해야 한다는 요구로 교체.
 
