@@ -87,6 +87,40 @@ slug는 `scripts/slug.sh`의 `rakis_slug` 함수로 정규화. `--slug` 인자�
 - 신규 수집: `captured_at_first = captured_at = 현재 ISO 8601`, `refresh_count = 0`
 - 재수집: 기존 파일에서 `captured_at_first`를 그대로 유지(없으면 이전 `captured_at` 값으로 세팅), `captured_at`을 현재로 갱신, `refresh_count += 1`
 
+## Phase 2.5: 참조 링크 수집 (1차 자료만 자동)
+
+수집한 원본이 **다른 자료를 참조하면 그 자료도 모은다.** 2차 요약(블로그·SNS 정리글)만 위키에 남으면 사실 확인이 원저자 요약에 묶인다 — 실제로 LinkedIn 논문 요약 하나를 검증하려고 논문·공식 페이지·구현 저장소를 뒤늦게 다 모아야 했다(2026-09-18 NoRA).
+
+**1. 링크 추출** — `source.md`(또는 PDF 본문)에서 URL을 뽑는다. 본문 링크·각주·"논문:", "코드:", "Paper", "Code", "arXiv:" 뒤의 식별자 전부.
+
+**2. 1차/2차 분류** — 도메인 화이트리스트로만 판정한다. 인상으로 판단하지 말 것.
+
+| 판정 | 도메인 | 동작 |
+|------|--------|------|
+| 1차 | `arxiv.org`, `openreview.net`, `aclanthology.org`, `*.pdf` | **자동 수집** (paper) |
+| 1차 | `github.com/{owner}/{repo}`, `huggingface.co/{org}/{model\|dataset}` | **자동 수집** (repo) |
+| 1차 | 해당 연구·제품의 **공식 프로젝트 페이지** (원본이 저자·개발사 페이지로 직접 링크한 도메인) | **자동 수집** (article) |
+| 2차 | 블로그(medium·brunch·tistory·velog·substack), SNS(linkedin·x·threads·facebook), 뉴스, 랜딩·마케팅 페이지, 유튜브 | **후보로 보고만** |
+
+애매하면 2차로 둔다. 자동 수집은 되돌리기 비싼 쪽(21 MB repomix가 동기화 vault에 들어온다)이므로 기본값이 보수적이어야 한다.
+
+**3. 수집** — 1차로 분류된 각 링크에 대해 Phase 0~3을 재귀 없이 **1단계만** 돈다. 참조의 참조는 따라가지 않는다(후보로만 보고). 이미 `meta.json` 이 있으면 건너뛴다(재수집 질문하지 않는다).
+
+`meta.json` 에 출처를 기록한다:
+
+```json
+{ "referenced_by": "<참조한 원본의 slug>" }
+```
+
+**4. 보고** — Phase 4 출력에 두 줄을 더한다:
+
+```
+참조 수집: raw/papers/{slug} (arxiv), raw/repos/{slug} (github)
+참조 후보(미수집): <url> — 2차 자료
+```
+
+후보는 사용자가 원하면 `/rakis:source-fetch <url>` 로 개별 수집한다.
+
 ## Phase 3: NotebookLM enrich (임계값 자동)
 
 > **임계값·호출 상세**: `references/enrich.md` 참조
@@ -113,7 +147,7 @@ enrich 조건 충족 시 (상세 명령은 `references/enrich.md` 참조):
 
 ## Phase 4: 출력
 
-- 요약 출력: 경로, 크기, enrich 여부
+- 요약 출력: 경로, 크기, enrich 여부, 참조 수집·후보 (Phase 2.5)
 - **wiki 쓰지 않음**. 마지막 줄:
   > "raw 저장 완료. `/rakis:wiki-ingest` 로 위키에 반영하세요."
 
