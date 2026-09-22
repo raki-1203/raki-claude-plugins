@@ -243,15 +243,26 @@ test_wiki() {
   fi
 
   # index.md에 wiki/sources 페이지가 등록되어 있는지
+  #
+  # 예외: 리다이렉트 stub. 같은 문서가 두 슬러그로 중복 수집되면 내용을 한쪽으로 병합하고
+  # 남은 쪽은 stub 으로 남긴 뒤 index.md 에서 내린다 — 파일을 지우면 raw/ 의 meta.json 이
+  # 그대로라 다음 wiki-ingest 가 페이지를 되살리기 때문이다(불변 계층). 즉 "미등록"이
+  # 의도된 상태이므로 여기서 실패로 잡으면 오탐이다. 2026-09-19 awesome-vibe-invest 병합 실측.
   echo "  [index.md 일관성]"
   IDX_FAIL=0
+  IDX_STUB=0
   while IFS= read -r sp; do
     PAGE_NAME=$(basename "$sp" .md)
+    if grep -q "^> \*\*이 페이지는 폐기됐다\." "$sp"; then
+      IDX_STUB=$((IDX_STUB + 1))
+      continue
+    fi
     if ! grep -q "$PAGE_NAME" "$VAULT/index.md"; then
       fail "index.md에 [[$PAGE_NAME]] 미등록"
       ((IDX_FAIL++))
     fi
   done < <(find "$VAULT/wiki/sources" -name "*.md" -type f 2>/dev/null)
+  [ "$IDX_STUB" -gt 0 ] && echo "    (리다이렉트 stub ${IDX_STUB}건 제외)"
   if [ "$IDX_FAIL" -eq 0 ]; then
     pass "index.md에 모든 sources 페이지 등록됨"
   fi
