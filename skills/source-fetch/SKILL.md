@@ -1,6 +1,6 @@
 ---
 name: source-fetch
-description: Use when the user wants to add an external source (URL, GitHub repo, PDF, local file) to the Obsidian vault — saves the original to raw/ and optionally enriches with a NotebookLM briefing. Does NOT write to wiki/.
+description: Use when the user wants to add an external source (URL, GitHub repo, PDF, local file) to the Obsidian vault — saves the original to raw/, follows reference links found in the body as their own sources (depth 1), and optionally enriches with a NotebookLM briefing. Does NOT write to wiki/.
 ---
 
 # source-fetch — 원본만 raw/에 저장
@@ -27,10 +27,11 @@ description: Use when the user wants to add an external source (URL, GitHub repo
 ## 인자
 
 ```
-/rakis:source-fetch <url-or-path> [--slug <slug>] [--no-enrich|--force-enrich] [--hint "..."]
+/rakis:source-fetch <url-or-path> [--slug <slug>] [--no-enrich|--force-enrich] [--hint "..."] [--no-follow]
 ```
 
 - `--hint "<한 줄>"`: NotebookLM briefing 생성 시 관점·도메인 힌트 주입 (예: `--hint "트레이딩 전략 관점 — 구간별 종료 조건에 집중"`). 플래그 없으면 기본 built-in 프롬프트 그대로. enrich 건너뛰는 경우 무시됨.
+- `--no-follow`: 본문 속 참고 링크를 추출·분류해 `meta.json`에 기록만 하고 수집하지 않는다 (Phase 2.5). 기본은 자동 수집.
 
 ## Phase 0: 유형 감지 + slug 생성
 
@@ -79,13 +80,47 @@ slug는 `scripts/slug.sh`의 `rakis_slug` 함수로 정규화. `--slug` 인자�
   "slug": "<slug>",
   "size_bytes": 0,
   "source_file": "source.md|source.pdf|repomix.txt",
-  "domain_hint": "<--hint 인자로 제공된 한 줄. 없으면 생략 또는 빈 문자열>"
+  "domain_hint": "<--hint 인자로 제공된 한 줄. 없으면 생략 또는 빈 문자열>",
+  "references": [],
+  "referenced_by": []
 }
 ```
 
 **작성 규칙:**
 - 신규 수집: `captured_at_first = captured_at = 현재 ISO 8601`, `refresh_count = 0`
 - 재수집: 기존 파일에서 `captured_at_first`를 그대로 유지(없으면 이전 `captured_at` 값으로 세팅), `captured_at`을 현재로 갱신, `refresh_count += 1`
+- `references`·`referenced_by`: Phase 2.5가 채운다. 해당 없으면 생략 가능. 재수집 시 `referenced_by`는 **이전 값을 보존**한다 — 나를 가리킨 부모는 내 재수집과 무관하다
+
+## Phase 2.5: 참고 링크 수집 (깊이 1)
+
+> **추출·분류·기록 상세**: `references/link-follow.md` 참조
+
+게시물은 대개 자기가 알맹이가 아니라 알맹이를 **가리킨다.** 본문에 참고 링크가
+있으면 그것도 독립 소스로 수집한다.
+
+**적용 조건 — 좁게 잡는다:**
+
+| 조건 | 값 |
+|------|-----|
+| 대상 타입 | `article` 만 (repo·paper는 링크가 수백 개라 제외) |
+| 깊이 | **1 고정** — 자식 수집에서는 이 단계를 돌지 않는다 |
+| 한 부모당 상한 | 수집 대상 8개. 초과분은 `fanout-limit`으로 기록만 |
+
+절차:
+
+1. `source.md` 본문 + 이미지 전사 텍스트에서 URL 추출
+2. 단축 링크 해석 (`lnkd.in`·`bit.ly`·`t.co` …). 해석 전에는 분류할 수 없다
+3. 트래킹 파라미터 제거 후 정규화 → 부모 자신·이미 raw에 있는 것 제외
+4. 분류 — **"읽을거리 하나"를 가리키는 링크만 수집**. 구독처(`t.me`·채널홈·프로필)·루트 랜딩·플랫폼 내부 링크·정적 에셋은 제외
+5. 대상마다 **Phase 0~3을 다시 실행**. 자식은 자기 유형의 `raw/` 위치·자기 slug·자기 `meta.json`을 갖는 독립 소스다 → `wiki-ingest`가 전수 스캔으로 알아서 집어간다
+6. 부모 `meta.json`의 `references`에 **제외한 것까지 전부** 기록, 자식에는 `referenced_by` 기록
+
+> **경계가 애매하면 수집한다.** 잘못 수집한 raw는 폴더 하나 지우면 끝이지만, 잘못
+> 제외한 링크는 아무도 눈치채지 못한다.
+
+> **자식 수집 실패는 부모를 실패시키지 않는다.** `status: "failed"`로 기록하고 다음
+> 링크로 넘어간다. 부모의 `--no-enrich`·`--force-enrich`·`--hint`는 자식에게 그대로
+> 전달하고, `--slug`는 부모에게만 적용한다.
 
 ## Phase 3: NotebookLM enrich (임계값 자동)
 
@@ -114,6 +149,14 @@ enrich 조건 충족 시 (상세 명령은 `references/enrich.md` 참조):
 ## Phase 4: 출력
 
 - 요약 출력: 경로, 크기, enrich 여부
+- 참고 링크를 따라갔으면 **부모 아래 트리로** 함께 출력한다. 제외한 링크는 사유까지 보여준다 — 오분류를 사용자가 바로 잡아낼 수 있어야 한다:
+
+  ```
+  raw/articles/linkedin-soulai-awesome-jev/  (4.4KB, enrich skip)
+    └─ ✓ raw/repos/anotiawang-awesome-jev/   (1.2MB, briefing 생성)
+    └─ ⊘ t.me/aiinnovationstudio             (subscription-channel)
+  ```
+
 - **wiki 쓰지 않음**. 마지막 줄:
   > "raw 저장 완료. `/rakis:wiki-ingest` 로 위키에 반영하세요."
 
@@ -125,6 +168,8 @@ enrich 조건 충족 시 (상세 명령은 `references/enrich.md` 참조):
 | WebFetch | 사용자에게 텍스트 직접 입력 요청 |
 | notebooklm 인증/업로드 | enrich 건너뛰고 raw만 저장 (에러 아님) |
 | slug 정규화 공백 | 사용자에게 `--slug` 요청 |
+| 단축 링크 해석 실패 | `failed`/`unresolved-shortlink` 기록 후 계속 (에러 아님) |
+| 참고 링크 fetch 실패 | `failed`/사유 기록 후 계속 — 부모 수집은 정상 완료 |
 
 ## references/
 
@@ -132,3 +177,4 @@ enrich 조건 충족 시 (상세 명령은 `references/enrich.md` 참조):
 |------|------|
 | `fetchers.md` | 유형별 fetch 명령 상세 |
 | `enrich.md` | NotebookLM 호출 순서·실패 처리 |
+| `link-follow.md` | 본문 속 참고 링크 추출·분류·기록 규칙 |
