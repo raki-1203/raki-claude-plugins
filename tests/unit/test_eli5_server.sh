@@ -96,6 +96,7 @@ echo "$A" | jq -e '.argv as $a | ($a|index("--allowedTools")) as $i | $a[$i+1]==
 echo "$A" | jq -e '.argv as $a | ($a|index("--setting-sources")) as $i | $a[$i+1]==""' >/dev/null \
   && echo "$A" | jq -e '.argv|index("{\"disableAllHooks\": true}") != null' >/dev/null && pass "hook 차단 플래그" || fail "hook 차단" "$A"
 echo "$A" | jq -e '.argv|index("--strict-mcp-config") != null' >/dev/null && pass "--strict-mcp-config" || fail "strict-mcp" "$A"
+echo "$A" | jq -e '.argv as $a | ($a|index("--model")) as $i | $a[$i+1]=="sonnet"' >/dev/null && pass "--model sonnet" || fail "model" "$A"
 echo "$A" | jq -e '.argv|index("--resume")==null' >/dev/null && pass "첫 질문은 --resume 없음" || fail "첫 질문 resume" "$A"
 echo "$A" | jq -e '.stdin|contains("[map context]") and contains("selected box: core") and contains("이거 뭐야?")' >/dev/null && pass "[map context] + 질문 전달" || fail "map context" "$A"
 ask "$Q" >/dev/null

@@ -11,7 +11,7 @@ license: MIT
 
 - 화살표의 진위는 `validate.py` 가 graft 호출 그래프·파일·git 으로 판정한다. 주장한 근거가 확인되지 않으면 자동으로 강등된다
 - HTML 은 `render.py` 가 고정 템플릿으로 만든다. LLM 은 HTML 을 쓰지 않는다
-- 지도는 `server.py` 가 질문 패널을 붙여 연다. 답은 read-only `claude -p` 가 지도 모델과 graft 를 근거로 만든다
+- 지도는 `server.py` 가 질문 패널을 붙여 연다. 답은 read-only `claude -p --model sonnet` 이 지도 모델과 graft 를 근거로 만든다
 
 쓰임은 쉬운 설명이 아니다. **구현 전에 사람과 에이전트가 같은 시스템을 보고 있는지 확인하는 것**이다.
 

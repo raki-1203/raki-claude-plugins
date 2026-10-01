@@ -34,6 +34,7 @@ HERE = Path(__file__).resolve().parent
 ASSETS = HERE.parent / "assets"
 CLAUDE_BIN = os.environ.get("ELI5_CLAUDE_BIN", "claude")
 GRAFT_BIN = os.environ.get("ELI5_GRAFT_BIN", "graft")
+CLAUDE_MODEL = "sonnet"  # 패널 답변은 지도·graft 근거 조회라 sonnet 으로 충분하다
 
 
 def env_f(name, default):
@@ -342,7 +343,7 @@ def format_context(ctx):
 def build_argv(srv, session):
     rules = (ASSETS / "answer-rules.md").read_text(encoding="utf-8")
     rules += f"\n\n## 이 지도\n\n- 지도 모델: `{srv.paths.model}`\n- 레포 루트: `{srv.paths.root}`\n"
-    argv = [CLAUDE_BIN, "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+    argv = [CLAUDE_BIN, "-p", "--model", CLAUDE_MODEL, "--output-format", "stream-json", "--verbose", "--include-partial-messages",
             "--tools", "Read,Grep,Glob", "--strict-mcp-config"]
     graft = shutil.which(GRAFT_BIN)
     if graft:

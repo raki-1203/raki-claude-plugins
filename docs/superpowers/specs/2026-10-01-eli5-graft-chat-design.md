@@ -153,7 +153,7 @@ tests/fixtures/eli5/    가짜 graft·claude 스크립트, 픽스처 레포·모
 **질문** — `POST /api/ask {conv_id, question, context}` → NDJSON 스트림:
 
 ```
-claude -p --output-format stream-json --verbose --include-partial-messages
+claude -p --model sonnet --output-format stream-json --verbose --include-partial-messages
   --tools Read,Grep,Glob
   --strict-mcp-config --mcp-config <{"mcpServers":{"graft":{"command":"graft","args":["mcp","<root>"]}}}>
   --allowedTools mcp__graft
