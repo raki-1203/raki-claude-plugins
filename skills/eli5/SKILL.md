@@ -90,7 +90,7 @@ python3 "$SKILL/bin/graft_prep.py" --root "$ROOT" --out-dir "<$OUT 의 $ROOT 상
 | 등급 | 언제 | evidence |
 |---|---|---|
 | `graft` | Phase 1-3 에서 `graft callers` 로 직접 본 호출 | `{"from_sym": "src/api/server.py#handle", "to_sym": "src/core/engine.py#run_job"}` — 노드 id 를 **복사**. 지어내면 검증기가 강등한다. 같은 관계를 코드로도 읽었다면 `ref`·`quote` 를 함께 넣는다 (graft 판정 실패 시 code 로 강등되는 안전망) |
-| `code` | 소스에서 직접 읽은 관계 (HTTP·큐·subprocess 등) | `{"ref": "src/core/engine.py:5", "quote": "requests.post"}` — quote 는 그 줄(±2)에 실제로 있는 10~40자 |
+| `code` | 소스에서 직접 읽은 관계 (HTTP·큐·subprocess 등) | `{"ref": "src/core/engine.py:5", "quote": "requests.post"}` — quote 는 그 줄(±2)에 실제로 있는 10~40자 (8자 미만은 검증기가 거부한다) |
 | `record` | ADR·PR·커밋 메시지 기반 해석 | `{"ref": "<커밋 해시 | PR#123 | docs/adr-1.md>"}` |
 | `unknown` | 근거 없음 | `{}` |
 

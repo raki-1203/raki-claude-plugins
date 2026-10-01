@@ -19,6 +19,7 @@ RULE_GRADES = ("code", "record", "unknown")
 GRAFT_BIN = os.environ.get("ELI5_GRAFT_BIN", "graft")
 SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
 PR_RE = re.compile(r"^PR#\d+$")
+MIN_QUOTE = 8  # 이보다 짧으면 어느 코드에나 있는 글자라 인용 대조가 무의미하다
 
 
 def integrity_errors(model):
@@ -123,6 +124,8 @@ def check_code(ev, root, quick):
     quote = ev.get("quote") or ""
     if not quote:
         return False, "quote 없음"
+    if len(quote.strip()) < MIN_QUOTE:
+        return False, f"quote '{quote}' 가 너무 짧다 ({MIN_QUOTE}자 이상)"
     lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
     window = "\n".join(lines[max(0, line - 3): line + 2])
     if quote not in window:

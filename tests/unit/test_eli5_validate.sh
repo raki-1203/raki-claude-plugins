@@ -41,6 +41,8 @@ fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["quote"]="requests.get"'
 run >/dev/null; [ "$(grade '.views.L0.edges[1].grade')" = "unknown" ] && pass "quote 불일치 → unknown" || fail "quote 불일치"
 fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["quote"]="requests.get"'
 run --quick >/dev/null; [ "$(grade '.views.L0.edges[1].grade')" = "code" ] && pass "--quick 은 quote 검사 생략" || fail "--quick"
+fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["quote"]="re"'
+out=$(run); [ "$(grade '.views.L0.edges[1].grade')" = "unknown" ] && echo "$out" | jq -e '.downgrades[0].reason|test("짧")' >/dev/null && pass "8자 미만 quote → unknown (어디에나 있는 글자로 통과 금지)" || fail "짧은 quote" "$out"
 fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["ref"]="src/core/nope.py:5"'
 run >/dev/null; [ "$(grade '.views.L0.edges[1].grade')" = "unknown" ] && pass "없는 파일 인용 → unknown" || fail "없는 파일"
 fresh; edit 'm["views"]["L0"]["rules"][0]["evidence"]["ref"]="deadbeefdeadbeef"'
