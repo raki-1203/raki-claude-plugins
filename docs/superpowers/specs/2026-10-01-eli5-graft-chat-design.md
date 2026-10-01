@@ -2,7 +2,7 @@
 
 - **작성일**: 2026-10-01
 - **상태**: 설계 승인 대기
-- **영향 범위**: rakis `eli5` 스킬 (1.0.0 → 2.0.0), rakis 3.19.0 → 3.20.0
+- **영향 범위**: rakis `eli5` 스킬 (1.0.0 → 2.0.0). 플러그인 버전은 pre-push 훅이 `feat:` 커밋을 보고 자동 bump (3.20.0)
 - **단계**: 1단계 (현재 코드 지도 + 질문 패널). PR 리뷰용 diff 모드는 2단계 별도 spec
 - **참고**: [robintech-seoul/agent-toolkit](https://github.com/robintech-seoul/agent-toolkit) `arch-explorer` · `code-wiki` (라이선스 없음 — 설계만 참고, 코드 미사용), [graft](https://github.com/trailhq/Graft) 0.16.0
 - **vault 근거**: `wiki/comparisons/graft-vs-code-wiki-arch-explorer.md`, `wiki/sources/desty-github-io-blog-60-eli5-visual-explainer.md`
@@ -113,7 +113,7 @@ tests/fixtures/eli5/    가짜 graft·claude 스크립트, 픽스처 레포·모
 | `graft` | 실선 | `{from_sym, to_sym}` (graft 노드 id, 예 `pkg/a.py#main`) | ① `graft callers <to_sym> --json` 결과 hits 에 `from_sym` 이 있다 ② `from_sym`·`to_sym` 의 path 가 각각 from·to 박스 `paths[]` 아래다 |
 | `code` | 점선 | `{ref: "path:line", quote}` | 파일 존재, `line±2` 범위에 `quote` 부분 문자열 존재. **존재하지 않는 인용을 거른다** |
 | `record` | 주황 점선 | `{ref}` — 커밋 해시 / `PR#n` / 문서 경로 | 대상 존재만 확인 (`git cat-file -e`, 파일 존재, PR 은 형식만). 해석의 옳고 그름은 판정 불가 |
-| `unknown` | 빨간 점선 | 없음 | `unknowns[]` 에 대응 항목이 있다 |
+| `unknown` | 빨간 점선 | 없음 | 판정 없음. `unknowns[]` 에 같은 `text` 항목이 없으면 검증기가 자동 추가한다 |
 
 `rules[]` 는 `code`·`record`·`unknown` 만 허용한다. 설계 규칙은 대개 "A 는 B 를 import 하지 않는다" 같은 **부재** 주장이라 `callers` 의 존재 판정으로 증명할 수 없다. `rules[]` 에 `graft` 가 오면 무결성 오류로 처리한다.
 
@@ -156,12 +156,17 @@ tests/fixtures/eli5/    가짜 graft·claude 스크립트, 픽스처 레포·모
 claude -p --output-format stream-json --verbose --include-partial-messages
   --tools Read,Grep,Glob
   --strict-mcp-config --mcp-config <{"mcpServers":{"graft":{"command":"graft","args":["mcp","<root>"]}}}>
+  --allowedTools mcp__graft
+  --setting-sources "" --settings '{"disableAllHooks":true}'
   --append-system-prompt <answer-rules.md + 모델 경로>
   [--resume <session_id>]
 ```
 
 - cwd = 레포 루트. 환경변수에서 `CLAUDECODE`·`CLAUDE_CODE_ENTRYPOINT`·`CLAUDE_CODE_SSE_PORT` 제거(부모 Claude Code 세션 중첩 오인 방지)
 - Bash 권한 없이 graft 를 쓰도록 graft MCP 하나만 연결 — `--tools` 만으로는 사용자 MCP 가 남으므로 `--strict-mcp-config` 필수
+- `--allowedTools mcp__graft` 필수 — 없으면 MCP 도구 호출이 `permission_denied` 로 막혀 답이 "권한이 필요합니다" 로 끝난다 (2026-10-01 실측)
+- `--setting-sources "" --settings '{"disableAllHooks":true}'` 필수 — 없으면 사용자 전역 hook(실측 SessionStart 6개, claude-mem 등)이 패널 질문마다 실행돼 지연과 기록 오염이 생긴다. 인증은 영향 없음(실측)
+- 실측: `--resume <session_id>` 는 **별도 프로세스에서도** 이전 턴을 기억한다 → 서버 재기동 후 대화 이어가기가 성립한다
 - 질문 stdin 으로 `[map context]` 블록 + 질문 전달. 블록: 현재 view(id·title·hint), 선택 박스(id·title·lines 상위 6), 이 view 의 iface 상위 30 × item 상위 4 `{sig, ref}`. 서버에서 6000자 상한 재적용
 - 이벤트 정규화: `session` / `delta` / `tool`(읽는 파일·graft 호출 표시용) / `final` / `error`. **스트림은 반드시 `final` 또는 `error` 하나로 끝난다** — 비정상 종료는 종료 코드 + stderr 끝 20줄을 `error` 로
 - 질문당 타임아웃 180초 → 프로세스 그룹 kill → `error`. 클라이언트 연결 끊김(쓰기 실패) 시 즉시 kill
