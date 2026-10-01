@@ -1,0 +1,43 @@
+{
+  "meta": {"target": "fixture 앱", "scope": ["src/"], "graft_version": "0.16.0"},
+  "views": {
+    "L0": {
+      "title": "L0 · 실행 단위",
+      "hint": "API 가 엔진을 부르고 엔진이 에이전트를 HTTP 로 부른다",
+      "parent": null,
+      "rules": [
+        {"text": "엔진은 HTTP 로 에이전트를 부른다", "grade": "record", "evidence": {"ref": "docs/adr-1.md"}}
+      ],
+      "nodes": [
+        {"id": "api", "title": "API 서버", "lines": ["handle(req)"], "row": 0, "col": 0, "paths": ["src/api/"]},
+        {"id": "core", "title": "엔진", "lines": ["run_job(job_id)"], "row": 0, "col": 1, "paths": ["src/core/"], "drill": "L1-core"},
+        {"id": "agent", "title": "에이전트 서비스", "lines": ["외부 HTTP"], "row": 1, "col": 1, "paths": []}
+      ],
+      "edges": [
+        {"from": "api", "to": "core", "label": "run_job", "iface": "run_job", "grade": "graft",
+         "evidence": {"from_sym": "src/api/server.py#handle", "to_sym": "src/core/engine.py#run_job"}},
+        {"from": "core", "to": "agent", "label": "POST /run", "iface": "agent-http", "grade": "code",
+         "evidence": {"ref": "src/core/engine.py:5", "quote": "requests.post"}},
+        {"from": "agent", "to": "api", "label": "결과 콜백?", "grade": "unknown", "evidence": {}}
+      ],
+      "ifaces": [
+        {"id": "run_job", "title": "작업 실행", "from": "api", "to": "core", "transport": "python call",
+         "items": [{"sig": "run_job(job_id)", "desc": "작업 하나를 실행한다", "ref": "src/core/engine.py:4"}]},
+        {"id": "agent-http", "title": "에이전트 호출", "from": "core", "to": "agent", "transport": "http",
+         "items": [{"sig": "POST http://agent/run", "desc": "작업 id 전달", "ref": "src/core/engine.py:5"}]}
+      ]
+    },
+    "L1-core": {
+      "title": "L1 · 엔진",
+      "hint": "엔진 내부",
+      "parent": "L0",
+      "rules": [],
+      "nodes": [
+        {"id": "engine", "title": "engine.py", "lines": ["run_job"], "row": 0, "col": 0, "paths": ["src/core/engine.py"]}
+      ],
+      "edges": [],
+      "ifaces": []
+    }
+  },
+  "unknowns": []
+}

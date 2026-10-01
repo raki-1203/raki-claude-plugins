@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""eli5 테스트용 가짜 claude -p (stream-json)."""
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+mode_file = os.environ.get("FAKE_CLAUDE_MODE_FILE")
+if mode_file and Path(mode_file).exists():
+    mode = Path(mode_file).read_text().strip()
+else:
+    mode = os.environ.get("FAKE_CLAUDE_MODE", "ok")
+question = sys.stdin.read()
+log = os.environ.get("FAKE_CLAUDE_ARGV_LOG")
+if log:
+    with open(log, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"argv": sys.argv[1:], "stdin": question,
+                            "env_claudecode": os.environ.get("CLAUDECODE")}, ensure_ascii=False) + "\n")
+sid = os.environ.get("FAKE_SESSION", "sess-1")
+
+
+def out(obj):
+    print(json.dumps(obj, ensure_ascii=False), flush=True)
+
+
+if mode == "fail":
+    print("boom", file=sys.stderr)
+    sys.exit(3)
+if mode == "empty":
+    sys.exit(0)
+if mode == "noise":
+    print("this is not json", flush=True)
+out({"type": "system", "subtype": "init", "session_id": sid})
+if mode == "sleep":
+    subprocess.Popen(["sleep", "3001"])
+    time.sleep(300)
+    sys.exit(0)
+out({"type": "assistant", "message": {"content": [
+    {"type": "tool_use", "name": "Read", "input": {"file_path": "src/app.py"}}]}})
+out({"type": "stream_event", "event": {"type": "content_block_delta",
+                                       "delta": {"type": "text_delta", "text": "답: "}}})
+out({"type": "result", "subtype": "success", "is_error": False,
+     "result": "답: src/core/engine.py:4 에서 정의된다", "session_id": sid})

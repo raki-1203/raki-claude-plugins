@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""eli5 테스트용 가짜 graft."""
+import json
+import os
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+if not args or args[0] in ("--version", "-v", "version"):
+    print("0.16.0")
+    sys.exit(0)
+cmd = args[0]
+if cmd == "build":
+    root = Path(args[1]) if len(args) > 1 else Path.cwd()
+    (root / "graft" / ".graph").mkdir(parents=True, exist_ok=True)
+    (root / "graft" / "INDEX.md").write_text("# fake\n")
+    with (root / ".gitignore").open("a") as f:
+        f.write("# graft's local graph cache\n/graft/\n")
+    (root / ".ignore").write_text("!graft/\n")
+    sys.exit(0)
+if cmd == "callers":
+    name = args[1]
+    path = args[args.index("--in") + 1] if "--in" in args else ""
+    src = os.environ.get("FAKE_GRAFT_CALLERS")
+    table = json.loads(Path(src).read_text()) if src else {}
+    key = f"{path}#{name}"
+    matches = []
+    if key in table:
+        matches.append({"symbol": {"id": key, "name": name, "path": path},
+                        "hits": [{"id": h, "relation": "calls", "depth": 1} for h in table[key]]})
+    print(json.dumps({"query": name, "matches": matches}))
+    sys.exit(0)
+if cmd == "mcp":
+    sys.stdin.read()
+    sys.exit(0)
+print(f"fake graft: unsupported {args}", file=sys.stderr)
+sys.exit(2)
