@@ -1,0 +1,168 @@
+<div id="eli5-panel-host"></div>
+<script>
+(function () {
+  const CMD = __ELI5_CMD__;
+  const STALE = __ELI5_STALE__;
+  const ELI5 = window.ELI5;
+  const host = document.getElementById("eli5-panel-host");
+  const root = host.attachShadow({mode: "open"});
+  document.documentElement.style.paddingRight = "400px";
+  root.innerHTML = `<style>
+  .p{position:fixed;top:0;right:0;width:400px;height:100vh;display:flex;flex-direction:column;z-index:2147483000;
+     background:#161b22;color:#e6edf3;border-left:1px solid #30363d;font:13px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  @media (prefers-color-scheme: light){.p{background:#ffffff;color:#1f2328;border-left-color:#d0d7de}}
+  header{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #30363d}
+  header b{flex:1}
+  .badge{font-size:11px;border:1px solid currentColor;border-radius:8px;padding:0 6px;opacity:.8}
+  button{font:inherit;cursor:pointer;border:1px solid #30363d;background:transparent;color:inherit;border-radius:6px;padding:3px 10px}
+  button:disabled{opacity:.5;cursor:default}
+  .banner{display:none;padding:8px 12px;font-size:12px;background:#3b2e00;color:#f2cc60}
+  .banner.on{display:block}
+  .banner.dead{background:#3d1214;color:#ff9a9a}
+  .log{flex:1;overflow-y:auto;padding:12px}
+  .msg{margin:0 0 12px;word-break:break-word}
+  .msg.user{margin-left:40px;background:#1f6feb33;padding:8px 10px;border-radius:8px}
+  .msg .chip{font-size:11px;opacity:.7;display:block}
+  .msg.bot{white-space:pre-wrap}
+  .msg.err{white-space:pre-wrap;color:#ff7b72}
+  .reading{font-size:11px;opacity:.6;margin:-8px 0 10px}
+  code{font:12px ui-monospace,Menlo,monospace;background:#6e768133;padding:0 4px;border-radius:4px}
+  a.ref{color:#4493f8;cursor:pointer;text-decoration:underline}
+  .chipbar{padding:4px 12px;font-size:12px;min-height:24px;opacity:.85}
+  .chipbar span{border:1px solid #30363d;border-radius:10px;padding:1px 8px}
+  .chipbar button{border:0;padding:0 4px}
+  form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #30363d}
+  textarea{flex:1;resize:none;height:56px;font:inherit;background:transparent;color:inherit;border:1px solid #30363d;border-radius:6px;padding:6px}
+  </style>
+  <div class="p">
+    <header><b>코드 질문</b><span class="badge">claude</span><button id="new" type="button">새 대화</button></header>
+    <div class="banner" id="stale">지도가 코드보다 낡았습니다 — 답은 현재 코드 기준이라 그림과 다를 수 있습니다</div>
+    <div class="banner dead" id="dead"></div>
+    <div class="log" id="log"></div>
+    <div class="chipbar" id="chip"></div>
+    <form id="f"><textarea id="q" placeholder="이 코드에 대해 물어보세요 (Enter 전송, Shift+Enter 줄바꿈)"></textarea><button id="send">보내기</button></form>
+  </div>`;
+  const $ = id => root.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const KEY = "eli5:conv:" + CMD;
+  const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2)).replace(/[^A-Za-z0-9-]/g, "");
+  let conv = null;
+  try { conv = localStorage.getItem(KEY); } catch (_) {}
+  if (!conv) { conv = newId(); try { localStorage.setItem(KEY, conv); } catch (_) {} }
+  if (STALE === "stale") $("stale").classList.add("on");
+
+  function greet() {
+    $("log").innerHTML = '<div class="msg bot">지도와 graft 를 근거로 답합니다. 박스를 고르면 그 박스에 대해 물을 수 있어요.</div>';
+  }
+  greet();
+
+  function current() {
+    const st = ELI5.state, v = ELI5.MODEL.views[st.view] || {};
+    const n = st.node ? (v.nodes || []).find(x => x.id === st.node) : null;
+    return {st, v, n};
+  }
+  function chipText() { const {v, n} = current(); return (v.title || "") + (n ? " › " + n.title : ""); }
+  function renderChip() {
+    const {n} = current();
+    $("chip").innerHTML = `<span>${esc(chipText())}${n ? ' <button id="unsel" type="button">×</button>' : ""}</span>`;
+    const u = $("unsel");
+    if (u) u.onclick = () => ELI5.select(null);
+  }
+  window.addEventListener("eli5:view", renderChip);
+  window.addEventListener("eli5:select", renderChip);
+  renderChip();
+
+  function context() {
+    const {st, v, n} = current();
+    return {
+      view: {id: st.view, title: v.title, hint: v.hint},
+      node: n ? {id: n.id, title: n.title, lines: (n.lines || []).slice(0, 6)} : null,
+      ifaces: (v.ifaces || []).slice(0, 30).map(f => ({title: f.title, from: f.from, to: f.to,
+        items: (f.items || []).slice(0, 4).map(i => ({sig: i.sig, ref: i.ref}))}))
+    };
+  }
+
+  const REF = /([A-Za-z0-9_.\/-]+\.[A-Za-z0-9]+):(\d+)/g;
+  function md(text) {
+    let h = esc(text);
+    h = h.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    return h.replace(REF, (m, p, l) => ELI5.refIndex.has(p + ":" + l) ? `<a class="ref" data-ref="${p}:${l}">${m}</a>` : m);
+  }
+  root.addEventListener("click", e => {
+    const a = e.target.closest && e.target.closest("a.ref");
+    if (a) ELI5.jumpRef(a.dataset.ref);
+  });
+
+  function add(cls, html) {
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.innerHTML = html;
+    $("log").appendChild(d);
+    $("log").scrollTop = 1e9;
+    return d;
+  }
+  function dead() {
+    $("dead").innerHTML = `서버가 종료됐습니다. 터미널에서 다시 여세요: <code>${esc(CMD)}</code> <button id="copy" type="button">복사</button>`;
+    $("dead").classList.add("on");
+    $("copy").onclick = () => { try { navigator.clipboard.writeText(CMD); } catch (_) {} };
+  }
+
+  let busy = false;
+  async function ask(q) {
+    if (busy || !q.trim()) return;
+    busy = true; $("send").disabled = true;
+    add("user", `<span class="chip">${esc(chipText())}</span>${esc(q)}`);
+    const bot = add("bot", "…");
+    const reading = document.createElement("div");
+    reading.className = "reading";
+    $("log").appendChild(reading);
+    let text = "", done = false;
+    try {
+      const r = await fetch("/api/ask", {method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({conv_id: conv, question: q, context: context()})});
+      if (r.status === 409) throw new Error("이 대화의 이전 질문이 아직 처리 중입니다");
+      if (r.status === 403) { dead(); throw new Error("서버 인증이 끊겼습니다 (서버가 재시작됨)"); }
+      if (!r.ok) throw new Error("서버 응답 " + r.status);
+      $("q").value = "";
+      const rd = r.body.getReader(), dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const {value, done: end} = await rd.read();
+        if (end) break;
+        buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i); buf = buf.slice(i + 1);
+          if (!line.trim()) continue;
+          const ev = JSON.parse(line);
+          if (ev.type === "delta") { text += ev.text; bot.textContent = text; }
+          else if (ev.type === "tool") reading.textContent = "읽는 중: " + (ev.detail || ev.name);
+          else if (ev.type === "final") { done = true; bot.innerHTML = md(ev.text || text); }
+          else if (ev.type === "error") { done = true; bot.className = "msg err"; bot.textContent = ev.message; }
+          $("log").scrollTop = 1e9;
+        }
+      }
+      if (!done) { bot.className = "msg err"; bot.textContent = "답변이 중간에 끊겼습니다"; }
+    } catch (e) {
+      bot.className = "msg err";
+      bot.textContent = String((e && e.message) || e);
+      if (e instanceof TypeError) dead();
+    } finally {
+      reading.remove(); busy = false; $("send").disabled = false;
+    }
+  }
+  $("f").addEventListener("submit", e => { e.preventDefault(); ask($("q").value); });
+  $("q").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask($("q").value); }
+  });
+  $("new").onclick = () => { conv = newId(); try { localStorage.setItem(KEY, conv); } catch (_) {} greet(); };
+
+  let deadTimer = null;
+  const es = new EventSource("/api/life");
+  es.addEventListener("hello", () => {
+    if (deadTimer) { clearTimeout(deadTimer); deadTimer = null; }
+    $("dead").classList.remove("on");
+  });
+  es.onerror = () => { if (!deadTimer) deadTimer = setTimeout(() => { es.close(); dead(); }, 30000); };
+})();
+</script>
