@@ -258,9 +258,41 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(403, b"bad host")
         if not self._authed() or not self._origin_ok():
             return self._send(403, b"forbidden")
-        if urlparse(self.path).path == "/api/ask" and hasattr(self, "_ask"):
+        if urlparse(self.path).path == "/api/ask":
             return self._ask()
         return self._send(404, b"not found")
+
+    def _ask(self):
+        srv = self.server
+        try:
+            n = int(self.headers.get("Content-Length", "0"))
+            if n > 65536:
+                raise ValueError("too large")
+            req = json.loads(self.rfile.read(n) or b"{}")
+            conv, q = str(req.get("conv_id", "")), str(req.get("question", "")).strip()
+            if not CONV_RE.match(conv) or not q or len(q) > 4000:
+                raise ValueError("bad request")
+        except ValueError:
+            return self._send(400, b"bad request")
+        with srv.lock:
+            busy = conv in srv.busy
+            if not busy:
+                srv.busy.add(conv)
+        if busy:
+            return self._send(409, b"busy")
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            run_ask(srv, conv, q, req.get("context") or {}, self._emit)
+        finally:
+            with srv.lock:
+                srv.busy.discard(conv)
+
+    def _emit(self, ev):
+        self.wfile.write((json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8"))
+        self.wfile.flush()
 
     def _life(self):
         srv = self.server
@@ -284,6 +316,138 @@ class Handler(BaseHTTPRequestHandler):
                 srv.conns -= 1
                 if srv.conns == 0:
                     srv.zero_since = time.monotonic()
+
+
+def format_context(ctx):
+    lines = ["[map context]"]
+    v = ctx.get("view") or {}
+    if v:
+        lines.append(f"current layer: {v.get('id', '')} — {v.get('title', '')}")
+        if v.get("hint"):
+            lines.append(f"layer hint: {v['hint']}")
+    n = ctx.get("node")
+    if n:
+        lines.append(f"selected box: {n.get('id', '')} — {n.get('title', '')}")
+        lines += [f"  {l}" for l in (n.get("lines") or [])[:6]]
+    ifaces = (ctx.get("ifaces") or [])[:30]
+    if ifaces:
+        lines.append("interfaces on this layer:")
+        for f in ifaces:
+            lines.append(f"- {f.get('title', '')} ({f.get('from', '')} → {f.get('to', '')})")
+            lines += [f"    {it.get('sig', '')}  @ {it.get('ref', '')}" for it in (f.get("items") or [])[:4]]
+    text = "\n".join(lines)
+    return text if len(text) <= MAX_CONTEXT else text[:MAX_CONTEXT] + "\n…(truncated)"
+
+
+def build_argv(srv, session):
+    rules = (ASSETS / "answer-rules.md").read_text(encoding="utf-8")
+    rules += f"\n\n## 이 지도\n\n- 지도 모델: `{srv.paths.model}`\n- 레포 루트: `{srv.paths.root}`\n"
+    argv = [CLAUDE_BIN, "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+            "--tools", "Read,Grep,Glob", "--strict-mcp-config"]
+    graft = shutil.which(GRAFT_BIN)
+    if graft:
+        mcp = {"mcpServers": {"graft": {"command": graft, "args": ["mcp", str(srv.paths.root)]}}}
+        argv += ["--mcp-config", json.dumps(mcp), "--allowedTools", "mcp__graft"]
+    argv += ["--setting-sources", "", "--settings", json.dumps({"disableAllHooks": True}),
+             "--append-system-prompt", rules]
+    if session:
+        argv += ["--resume", session]
+    return argv
+
+
+def child_env():
+    env = dict(os.environ)
+    for k in STRIP_ENV:
+        env.pop(k, None)
+    return env
+
+
+def tool_detail(inp):
+    if isinstance(inp, dict):
+        for k in ("file_path", "path", "pattern", "symbol", "query", "file"):
+            if inp.get(k):
+                return str(inp[k])[:120]
+    return ""
+
+
+def parse_line(obj):
+    t = obj.get("type")
+    if t == "system" and obj.get("subtype") == "init":
+        return [{"type": "session", "id": obj.get("session_id")}]
+    if t == "stream_event":
+        ev = obj.get("event") or {}
+        d = ev.get("delta") or {}
+        if ev.get("type") == "content_block_delta" and d.get("type") == "text_delta":
+            return [{"type": "delta", "text": d.get("text", "")}]
+        return []
+    if t == "assistant":
+        return [{"type": "tool", "name": c.get("name", ""), "detail": tool_detail(c.get("input"))}
+                for c in (obj.get("message") or {}).get("content", []) if c.get("type") == "tool_use"]
+    if t == "result":
+        if obj.get("is_error") or obj.get("subtype") != "success":
+            return [{"type": "error", "message": str(obj.get("result") or obj.get("subtype") or "실패")}]
+        return [{"type": "final", "text": obj.get("result") or "", "session": obj.get("session_id")}]
+    return []
+
+
+def run_ask(srv, conv, question, ctx, emit):
+    try:
+        proc = subprocess.Popen(build_argv(srv, srv.convs.get(conv)), cwd=str(srv.paths.root), env=child_env(),
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                start_new_session=True, text=True, encoding="utf-8", errors="replace")
+    except OSError as e:
+        emit({"type": "error", "message": f"claude 실행 실패: {e}"})
+        return
+    srv.children.add(proc)
+    tail = collections.deque(maxlen=20)
+    err_reader = threading.Thread(target=lambda: [tail.append(l.rstrip()) for l in proc.stderr], daemon=True)
+    err_reader.start()
+    timed_out = threading.Event()
+
+    def on_timeout():
+        timed_out.set()
+        kill_group(proc)
+
+    timer = threading.Timer(ASK_TIMEOUT, on_timeout)
+    timer.daemon = True
+    timer.start()
+    ended = False
+    try:
+        try:
+            proc.stdin.write(format_context(ctx) + "\n\n" + question)
+            proc.stdin.close()
+        except OSError:
+            pass
+        for line in proc.stdout:
+            try:
+                obj = json.loads(line)
+            except ValueError:
+                continue
+            for ev in parse_line(obj):
+                if ev["type"] == "session" and ev.get("id"):
+                    srv.save_conv(conv, ev["id"])
+                if ev["type"] in ("final", "error"):
+                    if ended:
+                        continue
+                    ended = True
+                    if ev["type"] == "final" and ev.get("session"):
+                        srv.save_conv(conv, ev["session"])
+                emit(ev)
+        proc.wait()
+        err_reader.join(timeout=2)
+        if not ended:
+            if timed_out.is_set():
+                emit({"type": "error", "message": f"시간 초과 ({int(ASK_TIMEOUT)}초) — 질문을 좁혀 다시 시도하세요"})
+            elif proc.returncode != 0:
+                emit({"type": "error", "message": f"claude 종료 코드 {proc.returncode}\n" + "\n".join(tail)})
+            else:
+                emit({"type": "error", "message": "답변이 비어 있다 (claude 가 결과 없이 종료)"})
+    except OSError:
+        pass  # 브라우저 연결 끊김 — finally 에서 정리
+    finally:
+        timer.cancel()
+        kill_group(proc)
+        srv.children.discard(proc)
 
 
 def cmd_serve(a):

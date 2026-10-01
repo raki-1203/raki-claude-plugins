@@ -81,4 +81,52 @@ echo "# changed" >> "$R/src/core/engine.py"
 git -C "$R" checkout -q -- src/core/engine.py
 OUT3=$(ELI5_CLAUDE_BIN=/nonexistent/claude python3 "$S" open --model "$M" --no-browser)
 [ "$(echo "$OUT3" | jq -r .panel)" = "false" ] && echo "$OUT3" | jq -e '.url|startswith("file://")' >/dev/null && pass "claude 없음 → file:// 로 패널 없이" || fail "claude 없음" "$OUT3"
+echo "🔧 질문"
+start; life
+ask() { curl -s -N -b "$JAR" -H "Origin: $BASE" -H 'Content-Type: application/json' -d "$1" "$BASE/api/ask"; }
+Q='{"conv_id":"c1","question":"이거 뭐야?","context":{"view":{"id":"L0","title":"L0"},"node":{"id":"core","title":"엔진","lines":["run_job"]},"ifaces":[]}}'
+echo ok > "$T/mode"
+r=$(ask "$Q")
+[ "$(echo "$r" | tail -1 | jq -r .type)" = "final" ] && pass "스트림이 final 로 끝남" || fail "final" "$r"
+echo "$r" | jq -s -e 'map(.type) | (index("session") != null) and (index("tool") != null) and (index("delta") != null)' >/dev/null && pass "session·tool·delta 이벤트" || fail "이벤트 종류" "$r"
+echo "$r" | jq -s -e 'map(select(.type=="tool"))[0].detail=="src/app.py"' >/dev/null && pass "tool detail" || fail "tool detail" "$r"
+A=$(tail -1 "$T/argv.log")
+echo "$A" | jq -e '.env_claudecode==null' >/dev/null && pass "CLAUDECODE 제거" || fail "CLAUDECODE" "$A"
+echo "$A" | jq -e '.argv as $a | ($a|index("--allowedTools")) as $i | $a[$i+1]=="mcp__graft"' >/dev/null && pass "--allowedTools mcp__graft" || fail "allowedTools" "$A"
+echo "$A" | jq -e '.argv as $a | ($a|index("--setting-sources")) as $i | $a[$i+1]==""' >/dev/null \
+  && echo "$A" | jq -e '.argv|index("{\"disableAllHooks\": true}") != null' >/dev/null && pass "hook 차단 플래그" || fail "hook 차단" "$A"
+echo "$A" | jq -e '.argv|index("--strict-mcp-config") != null' >/dev/null && pass "--strict-mcp-config" || fail "strict-mcp" "$A"
+echo "$A" | jq -e '.argv|index("--resume")==null' >/dev/null && pass "첫 질문은 --resume 없음" || fail "첫 질문 resume" "$A"
+echo "$A" | jq -e '.stdin|contains("[map context]") and contains("selected box: core") and contains("이거 뭐야?")' >/dev/null && pass "[map context] + 질문 전달" || fail "map context" "$A"
+ask "$Q" >/dev/null
+tail -1 "$T/argv.log" | jq -e '.argv as $a | ($a|index("--resume")) as $i | $a[$i+1]=="sess-1"' >/dev/null && pass "같은 대화 → --resume sess-1" || fail "resume"
+echo noise > "$T/mode"; r=$(ask "${Q/c1/c2}")
+[ "$(echo "$r" | tail -1 | jq -r .type)" = "final" ] && pass "JSON 아닌 줄 무시" || fail "noise" "$r"
+echo fail > "$T/mode"; r=$(ask "${Q/c1/c3}")
+echo "$r" | tail -1 | jq -e '.type=="error" and (.message|contains("boom")) and (.message|contains("3"))' >/dev/null && pass "비정상 종료 → error + stderr" || fail "fail" "$r"
+echo empty > "$T/mode"; r=$(ask "${Q/c1/c4}")
+echo "$r" | tail -1 | jq -e '.type=="error" and (.message|contains("비어"))' >/dev/null && pass "빈 출력 → error" || fail "empty" "$r"
+echo sleep > "$T/mode"
+ask "${Q/c1/c5}" > "$T/slow.out" & SLOW=$!; BGPIDS+=("$SLOW"); sleep 0.5
+[ "$(code -b "$JAR" -H "Origin: $BASE" -H 'Content-Type: application/json' -d "${Q/c1/c5}" "$BASE/api/ask")" = "409" ] && pass "같은 대화 동시 질문 409" || fail "409"
+wait "$SLOW"
+tail -1 "$T/slow.out" | jq -e '.type=="error" and (.message|contains("시간 초과"))' >/dev/null && pass "타임아웃 → error" || fail "timeout" "$(cat "$T/slow.out")"
+sleep 1; pgrep -f "sleep 3001" >/dev/null && fail "타임아웃 후 손자 프로세스 정리" || pass "타임아웃 후 손자 프로세스 정리"
+[ "$(code -b "$JAR" -H "Origin: $BASE" -H 'Content-Type: application/json' -d '{"conv_id":"bad id!","question":"x"}' "$BASE/api/ask")" = "400" ] && pass "잘못된 conv_id 400" || fail "400"
+
+echo "🔧 재기동 후 대화 유지"
+echo ok > "$T/mode"
+kill "$LIFE"; python3 "$S" stop --model "$M" >/dev/null; wait_dead "$PID" 3
+start; life; ask "$Q" >/dev/null
+tail -1 "$T/argv.log" | jq -e '.argv as $a | ($a|index("--resume")) as $i | $a[$i+1]=="sess-1"' >/dev/null && pass "서버 재기동 후 --resume" || fail "재기동 resume" "$(tail -1 "$T/argv.log")"
+
+echo "🔧 종료 시 진행 중 질문 정리"
+kill "$LIFE"; python3 "$S" stop --model "$M" >/dev/null; wait_dead "$PID" 3
+export ELI5_ASK_TIMEOUT_SEC=30; start; export ELI5_ASK_TIMEOUT_SEC=2; life
+echo sleep > "$T/mode"
+ask "${Q/c1/c6}" >/dev/null & BGPIDS+=("$!"); sleep 0.5
+pgrep -f "sleep 3001" >/dev/null && pass "(전제) 질문 진행 중" || fail "(전제) 질문 진행 중"
+kill "$LIFE"
+wait_dead "$PID" 4 && pass "탭 닫힘 → 서버 종료" || fail "서버 종료"
+sleep 0.5; pgrep -f "sleep 3001" >/dev/null && fail "진행 중 자식까지 정리" || pass "진행 중 자식까지 정리"
 finish
