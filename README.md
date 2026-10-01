@@ -55,7 +55,7 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 | `wiki-lint` | 위키 건강 점검 |
 | `wiki-init` | 빈 볼트 초기화 |
 | `migrate-v3` | v2 → v3 마이그레이션 (1회성) |
-| `eli5` | 코드·구조를 HTML 그림으로 설명 (조사→근거 표시→검증) |
+| `eli5` | 코드 구조를 graft 로 근거 검증한 드릴다운 HTML 지도 + 지도 옆 질문 패널 |
 
 ## 작업 프롬프트 자동 적용
 
@@ -106,6 +106,7 @@ Claude Code에서 직접 실행한 다음 Orca 경로는 Main 세션의 현재 c
 /rakis:wiki-query "MCP가 뭐였지?"                  # 질의
 /rakis:wiki-wrap-up                                # 세션 끝에 학습 저장
 /rakis:eli5 "세션이 만들어지는 과정"               # 구현 전에 구조를 그림으로 검토
+/rakis:eli5 open                                   # 만들어 둔 지도를 질문 패널과 함께 다시 열기
 
 # 4. 주 1회
 /rakis:wiki-lint                                   # 건강 점검 + 그래프 리빌드

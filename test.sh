@@ -297,6 +297,18 @@ test_orca() {
   echo ""
 }
 
+# ─── eli5 서버 테스트 ───
+
+test_eli5() {
+  echo "🔬 eli5 서버 테스트"
+  if bash tests/unit/test_eli5_server.sh; then
+    pass "eli5 서버 (수명·보안·질문)"
+  else
+    fail "eli5 서버 (수명·보안·질문)"
+  fi
+  echo ""
+}
+
 # ─── 실행 ───
 
 echo "=== rakis plugin 통합 테스트 ==="
@@ -310,6 +322,7 @@ case "$TARGET" in
     test_wiki
     test_router
     test_orca
+    test_eli5
     ;;
   deps)
     test_deps
@@ -326,6 +339,9 @@ case "$TARGET" in
     ;;
   orca)
     test_orca
+    ;;
+  eli5)
+    test_eli5
     ;;
   smoke)
     ;;
