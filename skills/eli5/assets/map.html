@@ -68,6 +68,7 @@ button.link{background:none;border:0;color:var(--accent);cursor:pointer;padding:
 const MODEL = /*__ELI5_MODEL__*/null;
 (function () {
   const W = 200, H = 96, GX = 90, GY = 70, PAD = 30, NS = "http://www.w3.org/2000/svg";
+  let gx = GX;  // 열 간격 — view 마다 가장 긴 화살표 라벨이 박스 사이에 들어가도록 넓힌다
   const GRADE = {graft: "graft 증명", code: "코드 읽음", record: "기록 해석", unknown: "미확인"};
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
@@ -88,7 +89,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
   }
   function box(n) {
     const span = n.span || 1;
-    return {x: PAD + (n.col || 0) * (W + GX), y: PAD + (n.row || 0) * (H + GY), w: span * W + (span - 1) * GX, h: H};
+    return {x: PAD + (n.col || 0) * (W + gx), y: PAD + (n.row || 0) * (H + GY), w: span * W + (span - 1) * gx, h: H};
   }
   function clip(b, tx, ty) {
     const cx = b.x + b.w / 2, cy = b.y + b.h / 2, dx = tx - cx, dy = ty - cy;
@@ -123,6 +124,14 @@ const MODEL = /*__ELI5_MODEL__*/null;
   function draw() {
     const v = views[state.view], svg = $("svg");
     svg.innerHTML = "";
+    gx = GX;
+    for (const e of v.edges || []) {
+      if (!e.label) continue;
+      const m = el("text", {}, svg);
+      m.textContent = e.label;
+      try { gx = Math.max(gx, m.getBBox().width + 24); } catch (_) {}
+      m.remove();
+    }
     const nodes = Object.fromEntries((v.nodes || []).map(n => [n.id, n]));
     let mx = 0, my = 0;
     for (const n of v.nodes || []) { const b = box(n); mx = Math.max(mx, b.x + b.w); my = Math.max(my, b.y + b.h); }
