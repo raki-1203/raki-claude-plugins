@@ -1,0 +1,91 @@
+#!/bin/bash
+set -uo pipefail
+source "$(dirname "$0")/../fixtures/eli5/lib.sh"
+T=$(mktemp -d)
+trap 'rm -rf "$T"' EXIT
+bash "$ELI5_FIX/make_repo.sh" "$T/r"
+export FAKE_GRAFT_CALLERS="$ELI5_FIX/callers.json"
+V="$ELI5_BIN/validate.py"
+fresh() { cp "$ELI5_FIX/model.json" "$T/m.model.json"; }
+run() { python3 "$V" "$T/m.model.json" --root "$T/r" "$@"; }
+edit() { python3 - "$T/m.model.json" "$1" <<'PY'
+import json, sys
+p, code = sys.argv[1], sys.argv[2]
+m = json.load(open(p, encoding="utf-8"))
+exec(code, {"m": m})
+json.dump(m, open(p, "w", encoding="utf-8"), ensure_ascii=False)
+PY
+}
+grade() { jq -r "$1" "$T/m.model.json"; }
+
+echo "🔧 validate — 정상 모델"
+fresh; out=$(run); rc=$?
+[ $rc -eq 0 ] && pass "exit 0" || fail "exit 0" "$rc $out"
+[ "$(echo "$out" | jq -c .counts)" = '{"graft":1,"code":1,"record":1,"unknown":1}' ] && pass "등급 집계" || fail "등급 집계" "$(echo "$out" | jq -c .counts)"
+[ "$(echo "$out" | jq '.downgrades|length')" = "0" ] && pass "강등 없음" || fail "강등 없음" "$out"
+[ "$(grade '.unknowns[0].text')" = "L0: agent → api (결과 콜백?)" ] && pass "unknown edge 를 unknowns 에 자동 추가" || fail "unknowns 자동 추가" "$(grade .unknowns)"
+[ "$(grade '.validation.counts.graft')" = "1" ] && pass "model.validation 기록" || fail "validation 기록"
+run >/dev/null; [ "$(grade '.unknowns|length')" = "1" ] && pass "재실행해도 unknowns 중복 없음" || fail "unknowns 중복"
+
+echo "🔧 강등"
+fresh; edit 'm["views"]["L0"]["edges"][0]["evidence"].update(from_sym="src/api/server.py#other", ref="src/api/server.py:5", quote="run_job(")'
+run >/dev/null; [ "$(grade '.views.L0.edges[0].grade')" = "code" ] && pass "graft 실패 + code 통과 → code" || fail "graft→code" "$(grade '.views.L0.edges[0].grade')"
+fresh; edit 'm["views"]["L0"]["edges"][0]["evidence"]["from_sym"]="src/api/server.py#other"'
+out=$(run); [ "$(grade '.views.L0.edges[0].grade')" = "unknown" ] && pass "graft 실패, code 근거 없음 → unknown" || fail "graft→unknown"
+echo "$out" | jq -e '.downgrades[0] | .claimed=="graft" and .result=="unknown" and (.reason|test("callers"))' >/dev/null && pass "강등 사유 기록" || fail "강등 사유" "$out"
+fresh; edit 'm["views"]["L0"]["edges"][0]["evidence"]["to_sym"]="src/api/server.py#handle"'
+out=$(run); echo "$out" | jq -e '.downgrades[0].reason|test("paths 밖")' >/dev/null && pass "to_sym 이 박스 paths 밖 → 강등" || fail "paths 밖" "$out"
+fresh; edit 'm["views"]["L0"]["edges"][0]["evidence"]["from_sym"]="handle"'
+run >/dev/null; [ "$(grade '.views.L0.edges[0].grade')" = "unknown" ] && pass "노드 id 형식 아님 → unknown" || fail "id 형식"
+fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["quote"]="requests.get"'
+run >/dev/null; [ "$(grade '.views.L0.edges[1].grade')" = "unknown" ] && pass "quote 불일치 → unknown" || fail "quote 불일치"
+fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["quote"]="requests.get"'
+run --quick >/dev/null; [ "$(grade '.views.L0.edges[1].grade')" = "code" ] && pass "--quick 은 quote 검사 생략" || fail "--quick"
+fresh; edit 'm["views"]["L0"]["edges"][1]["evidence"]["ref"]="src/core/nope.py:5"'
+run >/dev/null; [ "$(grade '.views.L0.edges[1].grade')" = "unknown" ] && pass "없는 파일 인용 → unknown" || fail "없는 파일"
+fresh; edit 'm["views"]["L0"]["rules"][0]["evidence"]["ref"]="deadbeefdeadbeef"'
+run >/dev/null; [ "$(grade '.views.L0.rules[0].grade')" = "unknown" ] && pass "없는 커밋 → unknown" || fail "없는 커밋"
+fresh; HEAD=$(git -C "$T/r" rev-parse HEAD); edit "m['views']['L0']['rules'][0]['evidence']['ref']='$HEAD'"
+run >/dev/null; [ "$(grade '.views.L0.rules[0].grade')" = "record" ] && pass "실제 커밋 → record 유지" || fail "실제 커밋"
+fresh; out=$(run --graft-status absent)
+[ "$(grade '.views.L0.edges[0].grade')" = "unknown" ] && echo "$out" | jq -e '.downgrades[0].reason=="graft 없음"' >/dev/null && pass "graft 없음 → 강등" || fail "graft 없음" "$out"
+
+echo "🔧 무결성 오류 (exit 1)"
+integrity() {
+  fresh; edit "$1"; local before; before=$(cat "$T/m.model.json"); out=$(run); local rc=$?
+  if [ $rc -eq 1 ] && echo "$out" | jq -e --arg k "$2" '.integrity_errors|any(test($k))' >/dev/null \
+     && [ "$(cat "$T/m.model.json")" = "$before" ]; then pass "$3"; else fail "$3" "rc=$rc $out"; fi
+}
+integrity 'm["views"]["L0"]["edges"][0]["to"]="ghost"' "노드 없음" "없는 노드"
+integrity 'm["views"]["L0"]["nodes"][1]["drill"]="ghost"' "drill 대상" "없는 drill"
+integrity 'm["views"]["L0"]["edges"][0]["iface"]="ghost"' "iface .ghost. 없음" "없는 iface"
+integrity 'm["views"]["L0"]["edges"][0].pop("iface")' "참조하는 edge 가 없다" "고아 iface"
+integrity 'm["views"]["L0"]["nodes"][1]["col"]=0' "겹쳐" "격자 겹침"
+integrity 'm["views"]["L0"]["rules"][0]["grade"]="graft"' "규칙은" "규칙 graft 등급"
+
+echo "🔧 누락 탐지"
+mkdir -p "$T/r/graft/.graph"
+cat > "$T/r/graft/.graph/wiring.json" <<'J'
+{"meta":{"version":1},"edges":[
+ {"source":"src/api/server.py#handle","target":"src/core/engine.py#run_job","relation":"calls"},
+ {"source":"src/core/engine.py#run_job","target":"src/api/server.py#handle","relation":"calls"},
+ {"source":"src/core/engine.py","target":"requests","relation":"imports"}]}
+J
+fresh; out=$(run)
+[ "$(echo "$out" | jq -c '[.missing_edges[]|[.view,.from,.to]]')" = '[["L0","core","api"]]' ] && pass "그림에 없는 관계 1건 (방향 구분)" || fail "누락 탐지" "$(echo "$out" | jq -c .missing_edges)"
+sed -i '' 's/"version":1/"version":2/' "$T/r/graft/.graph/wiring.json"
+fresh; out=$(run)
+echo "$out" | jq -e '(.missing_edges|length)==0 and (.missing_edges_skipped|test("버전"))' >/dev/null && pass "wiring 버전 불일치 → 건너뜀" || fail "버전 불일치" "$out"
+
+echo "🔧 실제 graft (설치돼 있을 때만)"
+REAL=$(PATH=/opt/homebrew/bin:/usr/local/bin:$PATH command -v graft || true)
+if [ -n "$REAL" ]; then
+  bash "$ELI5_FIX/make_repo.sh" "$T/real"
+  (cd "$T/real" && "$REAL" build . >/dev/null 2>&1)
+  cp "$ELI5_FIX/model.json" "$T/real.model.json"
+  out=$(ELI5_GRAFT_BIN="$REAL" python3 "$V" "$T/real.model.json" --root "$T/real")
+  [ "$(jq -r '.views.L0.edges[0].grade' "$T/real.model.json")" = "graft" ] && pass "실제 graft callers 로 graft 등급 유지" || fail "실제 graft" "$(echo "$out" | jq -c .downgrades)"
+else
+  echo "  ⏭️  graft 미설치 — 건너뜀"
+fi
+finish
