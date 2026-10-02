@@ -1,31 +1,32 @@
 ---
 name: eli5
-description: "코드베이스·시스템 구조를 사람이 따라 내려갈 수 있는 드릴다운 HTML 지도로 만들고, 지도 옆 패널에서 바로 여러 턴으로 질문할 수 있게 연다. 화살표마다 graft 호출 그래프·소스 인용·기록으로 근거를 기계 판정해 실선(graft 증명)·점선(코드 읽음)·주황(기록 해석)·빨강(미확인)으로 구분한다. '그림으로 설명해줘', '구조 좀 그려줘', '이 코드 어떻게 도는지 보여줘', '아키텍처 지도', '/rakis:eli5 <대상>' 일 때 사용. 낯선 모듈 파악·설계 검토·장애 경로 추적·구현 전 정렬 확인."
-version: 2.0.0
+description: "코드베이스·시스템 구조를 코드를 읽지 않는 사람도 한눈에 이해하는 드릴다운 HTML 지도로 만든다. 박스는 쉬운 이름 한 줄, 코드 이름·근거는 박스를 누르면 펼쳐지는 카드에. 화살표마다 graft 호출 그래프·소스 인용·기록으로 근거를 기계 판정하고(토글로 표시), 박스·화살표 글에 코드 이름이 섞이거나 풀이 없는 용어가 있으면 검증기가 거부한다. '그림으로 설명해줘', '구조 좀 그려줘', '이 코드 어떻게 도는지 보여줘', '아키텍처 지도', '/rakis:eli5 <대상>' 일 때 사용. 낯선 모듈 파악·설계 검토·장애 경로 추적·구현 전 정렬 확인."
+version: 3.0.0
 license: MIT
 ---
 
-# eli5 — 근거가 검증된 지도 + 질문 패널
+# eli5 — 코드를 안 읽는 사람이 읽는 지도
 
-정돈된 상자와 화살표는 정확하다는 인상을 준다. 하지만 그림의 사실성은 무엇을 읽고 그렸는지에만 달려 있다. v1 은 그 판단을 LLM 의 성실성에 맡겼다. v2 는 **LLM 은 내용만 쓰고, 판정과 그리기는 스크립트가 한다.**
+이 지도의 1차 독자는 **코드를 직접 읽지 않는 사람**이다. 박스에는 하는 일을 쉬운 말로 쓰고, 코드 이름과 근거는 박스를 누르면 펼쳐지는 카드에 둔다.
 
-- 화살표의 진위는 `validate.py` 가 graft 호출 그래프·파일·git 으로 판정한다. 주장한 근거가 확인되지 않으면 자동으로 강등된다
+정돈된 상자와 화살표는 정확하다는 인상을 준다. 그래서 **LLM 은 내용만 쓰고, 판정과 그리기는 스크립트가 한다.**
+
+- 화살표의 진위는 `validate.py` 가 graft 호출 그래프·파일·git 으로 판정한다. 확인되지 않은 주장은 자동 강등된다
+- 박스·화살표 글의 쉬운 말과 길이도 `validate.py` 가 검사한다. 코드 이름이 섞이거나 풀이 없는 용어가 있으면 거부한다
 - HTML 은 `render.py` 가 고정 템플릿으로 만든다. LLM 은 HTML 을 쓰지 않는다
-- 지도는 `server.py` 가 질문 패널을 붙여 연다. 답은 read-only `claude -p --model sonnet` 이 지도 모델과 graft 를 근거로 만든다
 
-쓰임은 쉬운 설명이 아니다. **구현 전에 사람과 에이전트가 같은 시스템을 보고 있는지 확인하는 것**이다.
+쓰임은 **구현 전에 사람과 에이전트가 같은 시스템을 보고 있는지 확인하는 것**이다. 지도를 보다 생긴 질문은 이 세션에서 바로 묻는다 — 조사 맥락이 여기 남아 있다.
 
 ## 인자
 
 ```
 /rakis:eli5 <설명할 대상> [--out <dir>] [--quick] [--no-open]
-/rakis:eli5 open [<model.json>]      기존 지도를 패널과 함께 다시 연다
-/rakis:eli5 stop [<model.json>]      패널 서버 수동 종료
+/rakis:eli5 open [<model.json>]      기존 지도를 다시 연다
 ```
 
 - `--out` — 출력 폴더. 기본 `<레포>/.eli5/` (`.git/info/exclude` 로 숨긴다)
-- `--quick` — 인용 줄 대조(quote)와 Phase 5 렌더링 확인을 생략한다. 지도에 "미검증" 배지가 붙고, **구현·리뷰의 근거로 쓰지 않는다.** 무결성 검사와 graft 판정은 생략하지 않는다
-- `--no-open` — 지도만 만들고 서버는 띄우지 않는다
+- `--quick` — 인용 줄 대조(quote)와 Phase 5 렌더링 확인을 생략한다. 지도에 "미검증" 배지가 붙고, **구현·리뷰의 근거로 쓰지 않는다.** 무결성·쉬운 말 검사와 graft 판정은 생략하지 않는다
+- `--no-open` — 지도만 만들고 열지 않는다
 
 ## 경로 약속
 
@@ -38,8 +39,13 @@ license: MIT
 
 - 코드 실행 순서가 아니라 **사람과 시스템이 주고받는 일의 순서**로 그린다
 - **모르는 것은 그리지 않는다.** 그려야 한다면 `unknown` 등급으로 그리고 `unknowns` 에 남긴다
-- 글은 박스 라벨 수준으로. 상세는 인터페이스 카드로
+- 박스에는 하는 일. 코드 이름은 `code[]`, 긴 설명은 `detail`, 호출 시그니처는 인터페이스 카드
 - 대상 레포의 추적 파일을 바꾸지 않는다
+
+## 문체 규칙
+
+- `${XDG_CONFIG_HOME:-~/.config}/rakis/eli5-writing-rules.md` 가 있으면 그것을 따른다
+- 없으면: 하는 일을 쓴다 · 코드 이름을 쓰지 않는다 · 시스템을 의인화하지 않는다 · 박스 이름은 명사구 · 사용자의 언어로
 
 ## Phase 0: graft 준비
 
@@ -68,22 +74,40 @@ python3 "$SKILL/bin/graft_prep.py" --root "$ROOT" --out-dir "<$OUT 의 $ROOT 상
 
 ```json
 {
-  "meta": {"target": "<대상>", "scope": ["src/"], "graft_version": "<Phase 0 version>"},
+  "meta": {"version": 3, "target": "<대상>",
+           "summary": "<이 시스템이 무엇을 하는지 1~2문장, 쉬운 말>",
+           "glossary": {"PostgreSQL": "<한 문장 풀이>"},
+           "scope": ["src/"], "graft_version": "<Phase 0 version>"},
   "views": {
     "L0": {
-      "title": "L0 · 실행 단위", "hint": "<이 층을 한 문장으로>", "parent": null,
+      "title": "L0 · <쉬운 말>", "hint": "<이 층을 한 문장으로>", "parent": null,
       "rules": [{"text": "<설계 규칙>", "grade": "code|record|unknown", "evidence": {}}],
-      "nodes": [{"id": "api", "title": "API 서버", "lines": ["<2~3줄>"], "row": 0, "col": 0, "span": 1,
-                 "paths": ["src/api/"], "drill": "L1-api"}],
-      "edges": [{"from": "api", "to": "core", "label": "<인터페이스 이름>", "iface": "<iface id>",
+      "nodes": [{"id": "api", "kind": "service", "title": "요청 받는 곳", "say": "<박스에 그리는 한 줄>",
+                 "detail": "<카드에만 — 2~3문장>", "code": ["src/api/server.py", "handle"],
+                 "row": 0, "col": 0, "span": 1, "paths": ["src/api/"], "drill": "L1-api"}],
+      "edges": [{"from": "api", "to": "core", "label": "<쉬운 말>", "iface": "<iface id>",
                  "grade": "graft|code|record|unknown", "evidence": {}}],
       "ifaces": [{"id": "...", "title": "...", "from": "api", "to": "core", "transport": "python call|http|queue|subprocess|file",
-                  "items": [{"sig": "<시그니처>", "desc": "<한 줄>", "ref": "path:line"}]}]
+                  "items": [{"sig": "<시그니처 — 코드 이름은 여기>", "desc": "<한 줄>", "ref": "path:line"}]}]
     }
   },
   "unknowns": [{"text": "...", "why": "..."}]
 }
 ```
+
+**사람이 읽는 칸** — 검증기가 쉬운 말·길이를 검사한다:
+
+| 칸 | 규칙 |
+|---|---|
+| `meta.summary` | 필수. 이 시스템이 무엇을 하는지 |
+| view `title`·`hint` | 쉬운 말 |
+| node `title` | 쉬운 이름, 24칸 이하 (한글 2칸·영숫자 1칸) |
+| node `say` | 필수. 하는 일 한 줄, 30칸 이하 |
+| edge `label` | 쉬운 말, 18칸 이하 |
+| node `kind` | 필수. `person`(사람) · `external`(외부 시스템) · `service`(서비스) · `module`(내부 모듈) · `store`(저장소) · `job`(작업). 박스 색과 범례가 된다 |
+| `meta.glossary` | 글에 나오는 제품·기술 용어(`PostgreSQL`, `LangGraph`, `API`, `SSE`)마다 한 문장 풀이. 화면에서 점선 밑줄 + 풀이 |
+
+검사에 걸리는 것: `snake_case`, `camelCase`, 경로(`src/api`, `/run`), 파일 이름(`turn.py`), 함수 호출(`handle(`), 속성 접근(`graph.astream`), 심볼(`#Parser`), glossary 에 없는 대문자 약어·대소문자 섞인 이름. `detail`·`code[]`·`rules`·`ifaces` 는 검사하지 않는다 — 카드에서 펼쳐 보는 2단계 정보다.
 
 **등급과 evidence** — 검증기가 이 형식으로만 판정한다:
 
@@ -108,10 +132,16 @@ python3 "$SKILL/bin/graft_prep.py" --root "$ROOT" --out-dir "<$OUT 의 $ROOT 상
 python3 "$SKILL/bin/validate.py" "$MODEL" --root "$ROOT" --graft-status <Phase 0 값> [--quick]
 ```
 
-- **exit 1** — `integrity_errors` 를 고치고 다시 실행한다. 3 회 연속 실패하면 멈추고 오류 목록을 보고한다
+- **exit 1** — `integrity_errors` 의 각 줄 `— ` 뒤에 고칠 방법이 있다. 그대로 고치고 다시 실행한다. 3 회 연속 실패하면 멈추고 오류 목록을 보고한다
+  - 쉬운 말 오류는 **글을 다시 쓴다.** 코드 이름을 `glossary` 에 넣어 통과시키지 않는다 (검증기가 코드 이름 키를 거부한다)
+  - 길이 오류는 줄이거나 `detail` 로 옮긴다
 - **exit 0** — 리포트를 읽는다
   - `downgrades`: **받아들인다.** 강등을 피하려고 근거를 바꾸지 않는다. 예외는 하나 — 사유가 "paths 밖" 이고 박스 `paths[]` 를 실제로 잘못 잡은 경우에만 paths 를 고쳐 재검증한다
-  - `missing_edges`: graft 가 찾았는데 그림에 없는 관계. 의미 있는 관계면 graft 등급 edge 로 추가하고 재검증한다. 의도적으로 뺐다면 그대로 둔다 (지도 하단에 노출된다)
+  - `missing_edges`: graft 가 찾았는데 그림에 없는 관계. 의미 있는 관계면 graft 등급 edge 로 추가하고 재검증한다. 의도적으로 뺐다면 그대로 둔다 (접힌 검증 리포트에 남는다)
+
+## Phase 3.5: 문체 재검토
+
+검증을 통과한 모델의 사람이 읽는 칸(summary·hint·title·say·label·detail)을 문체 규칙에 비춰 **한 번** 다시 읽고 고친다. 스크립트가 못 잡는 것 — 의인화("엔진이 판단한다"), 번역투, 같은 말 반복, 박스끼리 이름이 헷갈리는 것. 고쳤으면 Phase 3 를 다시 돈다.
 
 ## Phase 4: 렌더
 
@@ -125,39 +155,42 @@ HTML 을 직접 쓰거나 고치지 않는다. 모양을 바꾸려면 모델을 
 
 `--quick` 이면 생략하고 출력에 "렌더링 미확인" 을 남긴다.
 
-- Chrome 자동화(`mcp__claude-in-chrome__*`)가 있으면 `file://<html>` 을 열고 view 마다(`#view=<id>`) 스크린샷을 찍어 박스 겹침·라벨 충돌·박스를 관통하는 화살표·잘린 글자를 확인한다. 문제는 모델의 격자를 고쳐 Phase 3~4 를 다시 돈다
-- 없으면 `open "<html>"` 후 사용자에게 확인을 요청한다. "열릴 것이다" 로 넘어가지 않는다
+- Chrome 자동화(`mcp__claude-in-chrome__*`)가 있으면 `$OUT` 을 `python3 -m http.server --bind 127.0.0.1` 로 띄워(확장은 `file://` 을 못 연다) view 마다(`#view=<id>`) 스크린샷을 찍어 박스 겹침·라벨 충돌·박스를 관통하는 화살표·잘린 글자를 확인한다. 문제는 모델의 격자를 고쳐 Phase 3~4 를 다시 돈다. 끝나면 서버를 끈다
+- 없으면 Phase 6 으로 연 뒤 사용자에게 확인을 요청한다. "열릴 것이다" 로 넘어가지 않는다
 
 ## Phase 6: 열기
 
 `--no-open` 이 아니면:
 
 ```bash
-python3 "$SKILL/bin/server.py" open --model "$MODEL"
+python3 "$SKILL/bin/open.py" open "$OUT/<slug>.html"
 ```
 
-- `panel: false` 면 `reason` 을 전한다 (claude CLI 없음 → 패널 없는 지도만 열림)
-- `git -C "$ROOT" status --short` 가 Phase 0 기록과 같은지 대조한다. 다르면 무엇이 생겼는지 보고한다
+출력 `opened: orca-tab|browser|none <path>`. `none` 이면 경로를 사용자에게 준다. 그다음 `git -C "$ROOT" status --short` 가 Phase 0 기록과 같은지 대조한다. 다르면 무엇이 생겼는지 보고한다.
 
 ## Phase 7: 출력
 
 ```
-✓ <slug>.html   패널: <url>
+✓ <slug>.html   (<opened 결과>)
   근거: graft a · 코드 b · 기록 c · 미확인 d   (검증 강등 n건)
   그림에 없는 관계: m건
   확인 못 한 것:
     - <unknowns 항목>
-  서버: 탭을 닫으면 30초 뒤 자동 종료 · 수동 종료 /rakis:eli5 stop
 ```
 
 마지막 줄로 안내한다:
 
-> 이 지도는 코드를 대신하지 않는다. 어디부터 어떤 관점으로 읽을지 정해주는 첫 지도다. 중요한 결론은 원본 코드·로그·변경 이력으로 다시 확인한다.
+> 이 지도는 코드를 대신하지 않는다. 어디부터 어떤 관점으로 읽을지 정해주는 첫 지도다. 궁금한 건 이 세션에서 바로 물어보세요.
 
-## open / stop
+## open
 
-- `open` — 모델 경로가 없으면 `$ROOT/.eli5/*.model.json` 중 가장 최근 것. 먼저 `python3 "$SKILL/bin/server.py" status --model "$MODEL"` 로 지도 상태를 본다. `stale` 이면 "지도가 코드보다 낡았다 — 다시 만들까요, 그대로 열까요?" 를 묻는다 (기본 그대로 열기 — 열면 패널에 경고 배너). 다시 만들기는 기존 모델을 출발점으로 Phase 1 부터
-- `stop` — `python3 "$SKILL/bin/server.py" stop --model "$MODEL"`
+모델 경로가 없으면 `$ROOT/.eli5/*.model.json` 중 가장 최근 것. 먼저 `python3 "$SKILL/bin/open.py" status --model "$MODEL"` 로 상태를 본다.
+
+- `stale` — "지도가 코드보다 낡았다 — 다시 만들까요, 그대로 열까요?" 를 묻는다 (기본 그대로 열기). 다시 만들기는 기존 모델을 출발점으로 Phase 1 부터
+- `missing` — 렌더된 지도가 없다. Phase 3 부터
+- 그 외 — `python3 "$SKILL/bin/open.py" open "<html>"`
+
+v2 모델(`meta.version` 없음)은 `render.py` 가 거부한다. "예전 형식 지도라 다시 만든다" 고 알리고 Phase 1 부터.
 
 ## 하지 않는 것
 
@@ -170,6 +203,8 @@ python3 "$SKILL/bin/server.py" open --model "$MODEL"
 
 - 공식 `eli5` 스킬 — [anthropics/claude-plugins-community](https://github.com/anthropics/claude-plugins-community/tree/main/eli5) (Thariq Shihipar, MIT)
 - 보강 조건 — [앤트로픽의 ELI5 스킬 (desty, 2026-08-23)](https://desty.github.io/blog/60-eli5-visual-explainer/)
-- 레이어 드릴다운·인터페이스 카드·패널 주입 구조 — [robintech-seoul/agent-toolkit](https://github.com/robintech-seoul/agent-toolkit) `arch-explorer` (설계만 참고, 코드 미사용 — 라이선스 없음)
+- 그림 글과 카드 글 분리·문체 규칙 파일·Orca 탭 열기·원자적 쓰기 — [lcalmsky/deadhd](https://github.com/lcalmsky/deadhd) (MIT, Copyright (c) 2026 lcalmsky)
+- 쉬운 이름과 의미 분류·글자 칸 수(`textUnits`)·고칠 방법을 담은 오류 — [tt-a1i/archify](https://github.com/tt-a1i/archify) (MIT, Copyright (c) 2026 tt-a1i, 2025 Cocoon AI)
+- 레이어 드릴다운·인터페이스 카드 구조 — [robintech-seoul/agent-toolkit](https://github.com/robintech-seoul/agent-toolkit) `arch-explorer` (설계만 참고, 코드 미사용 — 라이선스 없음)
 - 호출 그래프 — [graft](https://github.com/trailhq/Graft) (MIT)
-- 설계 문서 — `docs/superpowers/specs/2026-10-01-eli5-graft-chat-design.md`
+- 설계 문서 — `docs/superpowers/specs/2026-10-02-eli5-v3-readable-map-design.md` (v2: `2026-10-01-eli5-graft-chat-design.md`)
