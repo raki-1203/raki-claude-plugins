@@ -269,14 +269,16 @@ def main():
     for vid, v in model["views"].items():
         nodes = {n["id"]: n for n in v.get("nodes", [])}
         for e in v.get("edges", []):
-            label = f"{vid}: {e['from']} → {e['to']}" + (f" ({e['label']})" if e.get("label") else "")
+            # 사람이 읽는 목록("확인 못 한 것")에 들어가므로 id 가 아니라 이름으로 쓴다
+            label = (f"{v.get('title') or vid}: {nodes[e['from']].get('title') or e['from']} → {nodes[e['to']].get('title') or e['to']}"
+                     + (f" ({e['label']})" if e.get("label") else ""))
             d = judge(e, {"from": nodes[e["from"]], "to": nodes[e["to"]], "graft": graft, "root": root, "quick": a.quick})
             if d:
                 downgrades.append({"view": vid, "kind": "edge", "id": label, **d})
             if e["grade"] == "unknown":
                 note_unknown(label, d["reason"] if d else "근거 없음")
         for r in v.get("rules", []):
-            label = f"{vid}: 규칙 — {r.get('text')}"
+            label = f"{v.get('title') or vid}: 규칙 — {r.get('text')}"
             d = judge(r, {"root": root, "quick": a.quick})
             if d:
                 downgrades.append({"view": vid, "kind": "rule", "id": label, **d})

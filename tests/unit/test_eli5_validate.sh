@@ -23,7 +23,7 @@ fresh; out=$(run); rc=$?
 [ $rc -eq 0 ] && pass "exit 0" || fail "exit 0" "$rc $out"
 [ "$(echo "$out" | jq -c .counts)" = '{"graft":1,"code":1,"record":1,"unknown":1}' ] && pass "등급 집계" || fail "등급 집계" "$(echo "$out" | jq -c .counts)"
 [ "$(echo "$out" | jq '.downgrades|length')" = "0" ] && pass "강등 없음" || fail "강등 없음" "$out"
-[ "$(grade '.unknowns[0].text')" = "L0: agent → api (결과 콜백?)" ] && pass "unknown edge 를 unknowns 에 자동 추가" || fail "unknowns 자동 추가" "$(grade .unknowns)"
+[ "$(grade '.unknowns[0].text')" = "L0 · 실행 단위: 에이전트 서비스 → 요청 받는 곳 (결과 콜백?)" ] && pass "unknown edge 를 unknowns 에 자동 추가" || fail "unknowns 자동 추가" "$(grade .unknowns)"
 [ "$(grade '.validation.counts.graft')" = "1" ] && pass "model.validation 기록" || fail "validation 기록"
 run >/dev/null; [ "$(grade '.unknowns|length')" = "1" ] && pass "재실행해도 unknowns 중복 없음" || fail "unknowns 중복"
 
