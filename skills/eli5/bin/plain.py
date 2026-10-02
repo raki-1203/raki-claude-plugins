@@ -25,7 +25,8 @@ CODE = (
     ("속성 접근", re.compile(A + r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*")),
     ("심볼 표기", re.compile(r"(?:#|::)[A-Za-z_][A-Za-z0-9_]*")),
 )
-TERM_RE = re.compile(A + r"(?:[A-Z]{2,}[A-Za-z0-9]*|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*)" + Z)
+# 대문자 슬래시 약어(A/B, CI/CD, N/A)는 경로가 아니라 용어다 — 풀이를 요구하고 glossary 로 구제된다
+TERM_RE = re.compile(A + r"(?:[A-Z][A-Z0-9]*(?:/[A-Z0-9]+)+|[A-Z]{2,}[A-Za-z0-9]*|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*)" + Z)
 # glossary 키로 들어오면 안 되는 종류 — 이걸 허용하면 코드 이름을 glossary 에 넣어 검사를 피할 수 있다
 KEY_FORBIDDEN = ("snake_case", "camelCase", "경로", "함수 호출", "심볼 표기")
 
@@ -44,6 +45,8 @@ def _scan(text, glossary):
     for kind, rx in CODE:
         for m in rx.finditer(text):
             s, e, tok = m.start(), m.end(), m.group(0)
+            if kind == "경로" and not re.search("[a-z]", tok):
+                continue  # 소문자가 없는 슬래시 표기는 약어다 (TERM_RE 가 맡는다)
             if any(s < fe and fs < e for fs, fe, _, _ in found):
                 continue
             found.append((s, e, kind, tok))
@@ -82,8 +85,11 @@ def glossary_key_errors(glossary):
     errs = []
     for key in glossary:
         kinds = [k for k, _ in code_tokens(key, {})]
+        tail = key.rsplit(".", 1)[-1]
+        # 점 표기는 제품명(Node.js, ASP.NET)만 허용 — Agent.handle·README.md 같은 코드 이름은 대문자로 시작해도 거부
+        product = key[:1].isupper() and (tail.isupper() or tail == "js")
         bad = any(k in KEY_FORBIDDEN for k in kinds) or (
-            any(k in ("속성 접근", "파일 이름") for k in kinds) and key[:1].islower())
+            any(k in ("속성 접근", "파일 이름") for k in kinds) and not product)
         if bad:
             errs.append(f"meta.glossary 키 '{key}' 는 코드 이름이다 — glossary 는 제품·기술 용어만. 코드 이름은 글에서 빼고 code[] 로 옮긴다")
     return errs

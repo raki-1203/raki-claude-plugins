@@ -45,4 +45,13 @@ check 'e = plain.check_plain("x", "PostgreSQL", {}); assert len(e) == 1 and "glo
 echo "🔧 plain — glossary 키"
 check 'assert plain.glossary_key_errors({"PostgreSQL": "a", "API": "b", "Node.js": "c"}) == []' "고유명사 키 허용"
 check 'e = plain.glossary_key_errors({"graph.astream": "x", "run_job": "y", "resolveSize": "z", "src/api": "w"}); assert len(e) == 4, e' "코드 이름 키 거부"
+
+echo "🔧 plain — 최종 리뷰 지적"
+check 'r = plain.code_tokens("A/B 테스트 · CI/CD 파이프라인 · N/A · I/O"); assert r == [], r' "대문자 슬래시 약어는 코드 경로 아님"
+check 'assert plain.unexplained_terms("CI/CD 파이프라인") == ["CI/CD"]' "대문자 슬래시 약어는 용어 — 풀이 필요"
+check 'assert plain.check_plain("x", "A/B 테스트", {"A/B": "두 안을 나눠 비교"}) == []' "슬래시 약어는 glossary 로 구제"
+check 'assert plain.glossary_key_errors({"A/B": "a", "CI/CD": "b"}) == []' "슬래시 약어 glossary 키 허용"
+check 'assert plain.code_tokens("POST /run · src/api") == [("경로", "/run"), ("경로", "src/api")]' "소문자 경로는 그대로 잡힘"
+check 'e = plain.glossary_key_errors({"Agent.handle": "x", "Store.save": "y", "README.md": "z"}); assert len(e) == 3, e' "대문자 시작 코드 이름 키 거부"
+check 'assert plain.glossary_key_errors({"Node.js": "a", "ASP.NET": "b"}) == []' "제품명 점 표기 키 허용"
 finish
