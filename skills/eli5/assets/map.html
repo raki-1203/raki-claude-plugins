@@ -31,10 +31,13 @@ h1{font-size:20px;margin:0 0 4px}
 nav{margin:12px 0 4px;font-size:13px} nav a{color:var(--accent);cursor:pointer}
 .hint{color:var(--muted);margin:2px 0 8px}
 ul{margin:0 0 12px;padding-left:18px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
 .diagram{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--box)}
-aside.side{border:1px solid var(--line);border-radius:8px;background:var(--box);padding:12px 14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
-@media (max-width:900px){.layout{grid-template-columns:1fr}aside.side{position:static;max-height:none}}
+/* 박스를 누를 때만 오른쪽에서 겹쳐 나오는 카드 — 지도는 항상 전체 폭을 쓴다 */
+aside.side{position:fixed;top:0;right:0;width:min(400px,100vw);height:100vh;overflow:auto;z-index:10;background:var(--box);border-left:1px solid var(--line);padding:16px 18px;box-shadow:-8px 0 24px rgba(0,0,0,.25);transform:translateX(100%);visibility:hidden;transition:transform .2s ease,visibility .2s}
+aside.side.open{transform:none;visibility:visible}
+@media (prefers-reduced-motion:reduce){aside.side{transition:none}}
+details.code{margin-top:14px}details.code summary{cursor:pointer;color:var(--muted);font-size:12px}
+.side code,.card div{overflow-wrap:anywhere}
 svg text{fill:var(--fg);font-size:12px}
 .node{cursor:pointer}
 .node rect.bg{fill:var(--box);stroke:var(--line);stroke-width:1.5}
@@ -118,6 +121,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
   const termsIn = (...texts) => TERMS.filter(t => texts.some(x => x && new RegExp("(?<![A-Za-z0-9_])" + reEsc(t) + "(?![A-Za-z0-9_])").test(x)));
   const short = s => String(s).split(" → ").map(p => p.endsWith("/") ? p.replace(/\/+$/, "").replace(/^.*\//, "") + "/" : p.replace(/^.*\//, "")).join(" → ");
   const chip = full => full ? `<button class="chip" type="button" data-copy="${esc(full)}" title="${esc(full)} — 누르면 복사">${esc(short(full))}</button>` : "";
+  const codeList = n => [...new Set([...(n.code || []), ...(n.paths || [])])];
   const nodeTitle = (vid, id) => ((views[vid].nodes || []).find(n => n.id === id) || {}).title || id;
 
   function el(tag, attrs, parent) {
@@ -227,26 +231,24 @@ const MODEL = /*__ELI5_MODEL__*/null;
   }
   function side() {
     const v = views[state.view], n = state.node && (v.nodes || []).find(x => x.id === state.node);
-    if (!n) {
-      const list = v.ifaces || [];
-      $("side").innerHTML = `<h2>${esc(v.title)}</h2><p class="detail">박스를 누르면 하는 일과 들어 있는 코드가 여기 나온다.</p>`
-        + (list.length ? `<h3>이 층의 인터페이스 ${list.length}개</h3>` + list.map(ifaceCard).join("") : "");
-      return;
-    }
+    $("side").classList.toggle("open", !!n);
+    if (!n) { $("side").innerHTML = ""; return; }
     const conns = (v.edges || []).filter(e => e.from === n.id || e.to === n.id).map(e => {
       const out = e.from === n.id, other = nodeTitle(state.view, out ? e.to : e.from);
-      return `<div class="conn">${out ? "→" : "←"} ${esc(other)} — ${esc(e.label || "")} <span class="tag g-${esc(e.grade)}">${GRADE[e.grade]}</span> ${chip(evText(e.evidence))}</div>`;
+      const grade = (state.ev || e.grade === "unknown") ? ` <span class="tag g-${esc(e.grade)}">${GRADE[e.grade]}</span>` : "";
+      return `<div class="conn">${out ? "→" : "←"} ${esc(other)} — ${esc(e.label || "")}${grade}${state.ev ? " " + chip(evText(e.evidence)) : ""}</div>`;
     }).join("");
-    const code = [...(n.code || []), ...(n.paths || [])];
+    const code = codeList(n);
     const ifs = (v.ifaces || []).filter(f => f.from === n.id || f.to === n.id);
     const terms = termsIn(n.title, n.say, n.detail);
     $("side").innerHTML = `<div class="k"><i style="background:var(--k-${esc(n.kind)})"></i>${KIND[n.kind] || ""}</div>
       <h2>${rich(n.title)}</h2><p>${rich(n.say || "")}</p>${n.detail ? `<p class="detail">${rich(n.detail)}</p>` : ""}
       ${n.drill ? `<p><button class="link" type="button" data-go="${esc(n.drill)}">안으로 들어가기 ▸</button></p>` : ""}
       ${conns ? `<h3>연결</h3>${conns}` : ""}
-      ${code.length ? `<h3>들어 있는 코드</h3>${code.map(chip).join("")}` : ""}
-      ${ifs.length ? `<h3>인터페이스</h3>${ifs.map(ifaceCard).join("")}` : ""}
       ${terms.length ? `<h3>용어</h3>${terms.map(t => `<div><b>${esc(t)}</b> — ${esc(gloss[t])}</div>`).join("")}` : ""}
+      ${code.length || ifs.length ? `<details class="code"><summary>코드 자세히</summary>
+        ${code.length ? `<h3>들어 있는 코드</h3>${code.map(chip).join("")}` : ""}
+        ${ifs.length ? `<h3>인터페이스</h3>${ifs.map(ifaceCard).join("")}` : ""}</details>` : ""}
       <p><button class="link" type="button" data-close>닫기</button></p>`;
   }
   $("side").addEventListener("click", ev => {
@@ -283,14 +285,19 @@ const MODEL = /*__ELI5_MODEL__*/null;
     state.node = nid; draw(); side();
   }
   function flash(vid, ifaceId) {
+    const f = (views[vid].ifaces || []).find(x => x.id === ifaceId);
+    if (!f) return;
     if (state.view !== vid) go(vid);
-    if (state.node) select(null);
+    select(f.from);
+    const d = $("side").querySelector("details.code");
+    if (d) d.open = true;
     const c = document.getElementById(`card-${vid}-${ifaceId}`);
     if (!c) return;
     c.scrollIntoView({behavior: "smooth", block: "center"});
     c.classList.add("flash");
     setTimeout(() => c.classList.remove("flash"), 1600);
   }
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape" && state.node) select(null); });
   window.addEventListener("hashchange", () => {
     const m = location.hash.match(/^#view=(.+)$/);
     if (m) { const v = decodeURIComponent(m[1]); if (v !== state.view) go(v); }

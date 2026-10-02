@@ -74,4 +74,14 @@ if command -v node >/dev/null 2>&1; then
 else
   echo "  ⏭️  node 없음 — 칩 이름 테스트 건너뜀"
 fi
+TPL="$ELI5_FIX/../../../skills/eli5/assets/map.html"
+! grep -q '340px' "$TPL" && grep -q 'aside.side{position:fixed' "$TPL" && grep -q 'classList.toggle("open"' "$TPL" \
+  && pass "A: 카드는 박스를 누를 때만 열리는 겹침 카드 — 지도는 전체 폭" || fail "A: 겹침 카드"
+grep -q '<details class="code"><summary>코드 자세히</summary>' "$TPL" && grep -q 'overflow-wrap:anywhere' "$TPL" \
+  && pass "B: 코드·인터페이스는 접힌 '코드 자세히' 안, 긴 코드는 줄바꿈" || fail "B: 코드 접기"
+if command -v node >/dev/null 2>&1; then
+  CL=$(grep -o 'const codeList = .*;$' "$TPL")
+  out=$(node -e "$CL; console.log(codeList({code: ['src/a.py', 'src/s/'], paths: ['src/api/', 'src/s/']}).join('|') + '#' + codeList({}).length)")
+  [ "$out" = "src/a.py|src/s/|src/api/#0" ] && pass "C: 들어 있는 코드 중복 제거" || fail "C: 중복 제거" "$out"
+fi
 finish
