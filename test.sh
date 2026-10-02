@@ -297,15 +297,18 @@ test_orca() {
   echo ""
 }
 
-# ─── eli5 서버 테스트 ───
+# ─── eli5 유닛 테스트 ───
 
 test_eli5() {
-  echo "🔬 eli5 서버 테스트"
-  if bash tests/unit/test_eli5_server.sh; then
-    pass "eli5 서버 (수명·보안·질문)"
-  else
-    fail "eli5 서버 (수명·보안·질문)"
-  fi
+  echo "🔬 eli5 유닛 테스트"
+  local t
+  for t in prep plain validate render open; do
+    if bash "tests/unit/test_eli5_$t.sh"; then
+      pass "eli5 $t"
+    else
+      fail "eli5 $t"
+    fi
+  done
   echo ""
 }
 

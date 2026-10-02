@@ -8,4 +8,3 @@ pass() { PASS=$((PASS+1)); echo "  ✅ $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  ❌ $1${2:+ (got: $2)}"; }
 finish() { echo "=== $PASS passed, $FAIL failed ==="; [ "$FAIL" -eq 0 ]; }
 export ELI5_GRAFT_BIN="$ELI5_FIX/bin/graft"
-export ELI5_CLAUDE_BIN="$ELI5_FIX/bin/claude"
