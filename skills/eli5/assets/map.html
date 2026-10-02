@@ -5,81 +5,120 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__ELI5_TITLE__ — eli5</title>
 <style>
-:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--box:#ffffff;--accent:#0969da;--sel:#fff8c5;
-  --graft:#1a7f37;--code:#0969da;--record:#9a6700;--unknown:#cf222e}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--sel:#3b2e00;
-  --graft:#3fb950;--code:#4493f8;--record:#d29922;--unknown:#f85149}}
-:root[data-theme="dark"]{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--sel:#3b2e00;
-  --graft:#3fb950;--code:#4493f8;--record:#d29922;--unknown:#f85149}
+:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--box:#ffffff;--accent:#0969da;--sel:#fff8c5;--edge:#8c959f;
+  --graft:#1a7f37;--code:#0969da;--record:#9a6700;--unknown:#cf222e;
+  --k-person:#8250df;--k-external:#6e7781;--k-service:#0969da;--k-module:#1a7f37;--k-store:#bc4c00;--k-job:#bf3989}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--sel:#3b2e00;--edge:#6e7681;
+  --graft:#3fb950;--code:#4493f8;--record:#d29922;--unknown:#f85149;
+  --k-person:#a371f7;--k-external:#8d96a0;--k-service:#4493f8;--k-module:#3fb950;--k-store:#f0883e;--k-job:#db61a2}}
+:root[data-theme="dark"]{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--sel:#3b2e00;--edge:#6e7681;
+  --graft:#3fb950;--code:#4493f8;--record:#d29922;--unknown:#f85149;
+  --k-person:#a371f7;--k-external:#8d96a0;--k-service:#4493f8;--k-module:#3fb950;--k-store:#f0883e;--k-job:#db61a2}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
-main{max-width:1200px;margin:0 auto;padding:16px}
-h1{font-size:20px;margin:0 0 6px}
-.badges span{display:inline-block;margin:0 6px 4px 0;padding:1px 8px;border-radius:10px;border:1px solid currentColor;font-size:12px}
-.badges .plain{color:var(--muted)}
-nav{margin:12px 0;font-size:13px} nav a{color:var(--accent);cursor:pointer}
-.hint{color:var(--muted);margin:4px 0 8px}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+main{max-width:1320px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}
+.summary{margin:0 0 10px;font-size:15px}
+.meta-row{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12px;color:var(--muted)}
+.legend .kd{margin-right:10px;white-space:nowrap}
+.legend .kd i,.side .k i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.chips span{display:inline-block;padding:0 8px;border-radius:10px;border:1px solid var(--line);margin-right:4px}
+.chips .warn{color:var(--unknown);border-color:currentColor}
+.toggle{cursor:pointer;user-select:none}
+#evlegend{font-size:12px;color:var(--muted);margin:6px 0 0}
+#evlegend i{display:inline-block;width:22px;border-top:2px solid;margin:0 4px 3px 10px;vertical-align:middle}
+#evlegend i.g-code,#evlegend i.g-record{border-top-style:dashed}#evlegend i.g-unknown{border-top-style:dotted}
+nav{margin:12px 0 4px;font-size:13px} nav a{color:var(--accent);cursor:pointer}
+.hint{color:var(--muted);margin:2px 0 8px}
 ul{margin:0 0 12px;padding-left:18px}
-.legend{font-size:12px;color:var(--muted);margin:8px 0}
-.legend i{display:inline-block;width:22px;border-top:2px solid;margin:0 4px 3px 10px;vertical-align:middle}
-.legend i.g-code,.legend i.g-record{border-top-style:dashed}.legend i.g-unknown{border-top-style:dotted}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
 .diagram{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--box)}
+aside.side{border:1px solid var(--line);border-radius:8px;background:var(--box);padding:12px 14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:900px){.layout{grid-template-columns:1fr}aside.side{position:static;max-height:none}}
 svg text{fill:var(--fg);font-size:12px}
 .node{cursor:pointer}
-.node rect{fill:var(--box);stroke:var(--line);stroke-width:1.5}
-.node.drill rect{stroke:var(--fg);stroke-width:2.5}
-.node.sel rect{fill:var(--sel)}
+.node rect.bg{fill:var(--box);stroke:var(--line);stroke-width:1.5}
+.node.drill rect.bg{stroke:var(--fg);stroke-width:2.5}
+.node.sel rect.bg{fill:var(--sel)}
 .node .title{font-weight:600;font-size:13px}
 .node .sub{fill:var(--muted);font-size:11px}
 .node .go{fill:var(--accent);font-size:11px}
+.k-person{fill:var(--k-person)}.k-external{fill:var(--k-external)}.k-service{fill:var(--k-service)}
+.k-module{fill:var(--k-module)}.k-store{fill:var(--k-store)}.k-job{fill:var(--k-job)}
 .edge path{fill:none;stroke-width:1.8}
 .edge.dim{opacity:.15}
 .edge .lbl-bg{fill:var(--box)}
 .edge text{font-size:11px;stroke:none;fill:currentColor}
+.g-n{stroke:var(--edge);color:var(--muted)}
 .g-graft{stroke:var(--graft);color:var(--graft)}
 .g-code{stroke:var(--code);color:var(--code);stroke-dasharray:6 4}
 .g-record{stroke:var(--record);color:var(--record);stroke-dasharray:4 3}
 .g-unknown{stroke:var(--unknown);color:var(--unknown);stroke-dasharray:2 4}
-h2{font-size:15px;margin:20px 0 8px}
-.card{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:8px 0;background:var(--box)}
+.side h2{font-size:16px;margin:4px 0 6px}.side h3{font-size:12px;color:var(--muted);margin:14px 0 4px;font-weight:600}
+.side .k{font-size:12px;color:var(--muted)}
+.side .detail{color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--bg)}
 .card.flash{outline:2px solid var(--accent)}
 .card .t{font-weight:600}.card .m{color:var(--muted);font-size:12px}
-code,.ref{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
-.ref{color:var(--muted)}
-.tag{font-size:11px;padding:0 6px;border-radius:8px;border:1px solid currentColor;margin-left:6px}
+.conn{margin:4px 0}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.chip{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 8px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;margin:2px 4px 2px 0}
+.tag{font-size:11px;padding:0 6px;border-radius:8px;border:1px solid currentColor;margin-left:4px}
+abbr{text-decoration:underline dotted;cursor:help}
 button.link{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font:inherit}
+h2.sec{font-size:15px;margin:20px 0 8px}
+details#report{margin:20px 0;color:var(--muted)} details#report summary{cursor:pointer}
+details#report h3{font-size:13px;margin:12px 0 4px}
 @media (max-width:640px){main{padding:12px 16px}}
 </style>
 </head>
 <body>
 <main>
-<header><h1 id="title"></h1><div class="badges" id="badges"></div></header>
+<header>
+  <h1 id="title"></h1>
+  <p class="summary" id="summary"></p>
+  <div class="meta-row">
+    <span class="legend" id="legend"></span>
+    <span class="chips" id="chips"></span>
+    <label class="toggle"><input type="checkbox" id="ev"> 근거 보기</label>
+  </div>
+  <div id="evlegend" hidden>근거: <i class="g-graft"></i>graft 증명 <i class="g-code"></i>코드 읽음 <i class="g-record"></i>기록 해석 <i class="g-unknown"></i>미확인 (미확인은 항상 표시)</div>
+</header>
 <nav id="crumbs"></nav>
 <div class="hint" id="hint"></div>
 <ul id="rules"></ul>
-<div class="legend">근거: <i class="g-graft"></i>graft 증명 <i class="g-code"></i>코드 읽음 <i class="g-record"></i>기록 해석 <i class="g-unknown"></i>미확인 · 굵은 테두리 = 안으로 들어갈 수 있음 · 박스를 누르면 닿는 것만 남는다</div>
-<div class="diagram"><svg id="svg" role="img" aria-label="아키텍처 지도"></svg></div>
-<section><h2 id="cards-h"></h2><div id="cards"></div></section>
-<section><h2>확인 못 한 것</h2><ul id="unknowns"></ul></section>
-<section><h2>그림에 없는 관계 (graft 가 찾음)</h2><ul id="missing"></ul></section>
-<section><h2>검증에서 강등된 주장</h2><ul id="downs"></ul></section>
+<div class="layout">
+  <div class="diagram"><svg id="svg" role="img" aria-label="구조 지도"></svg></div>
+  <aside class="side" id="side"></aside>
+</div>
+<h2 class="sec">확인 못 한 것</h2><ul id="unknowns"></ul>
+<details id="report"><summary>검증 리포트</summary>
+  <h3>검증에서 강등된 주장</h3><ul id="downs"></ul>
+  <h3>그림에 없는 관계 (graft 가 찾음)</h3><ul id="missing"></ul>
+</details>
 </main>
 <script>
 const MODEL = /*__ELI5_MODEL__*/null;
 (function () {
-  const W = 200, H = 96, GX = 90, GY = 70, PAD = 30, NS = "http://www.w3.org/2000/svg";
+  const W = 200, H = 72, GX = 90, GY = 60, PAD = 30, NS = "http://www.w3.org/2000/svg";
   let gx = GX;  // 열 간격 — view 마다 가장 긴 화살표 라벨이 박스 사이에 들어가도록 넓힌다
-  const GRADE = {graft: "graft 증명", code: "코드 읽음", record: "기록 해석", unknown: "미확인"};
+  const GRADE = {graft: "graft 증명", code: "코드 읽음", record: "기록 해석", unknown: "미확인", n: "근거 숨김"};
+  const KIND = {person: "사람", external: "외부 시스템", service: "서비스", module: "내부 모듈", store: "저장소", job: "작업"};
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-  const views = MODEL.views;
+  const views = MODEL.views, meta = MODEL.meta || {}, gloss = meta.glossary || {};
   const rootView = Object.keys(views).find(k => !views[k].parent) || Object.keys(views)[0];
-  const state = {view: null, node: null};
-  const refIndex = new Map();
-  for (const [vid, v] of Object.entries(views))
-    for (const f of v.ifaces || [])
-      for (const it of f.items || [])
-        if (it.ref && !refIndex.has(it.ref)) refIndex.set(it.ref, {view: vid, iface: f.id});
+  const state = {view: null, node: null, ev: false};
+
+  // 용어 풀이 — 긴 용어부터, ASCII 경계 검사 (deadhd linkify 방식)
+  const TERMS = Object.keys(gloss).sort((a, b) => b.length - a.length);
+  const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const TERM_RE = TERMS.length ? new RegExp("(?<![A-Za-z0-9_])(" + TERMS.map(t => reEsc(esc(t))).join("|") + ")(?![A-Za-z0-9_])", "g") : null;
+  const rich = text => { const h = esc(text); return TERM_RE ? h.replace(TERM_RE, t => `<abbr title="${esc(gloss[t] ?? gloss[t.replace(/&amp;/g, "&")] ?? "")}">${t}</abbr>`) : h; };
+  const termsIn = (...texts) => TERMS.filter(t => texts.some(x => x && new RegExp("(?<![A-Za-z0-9_])" + reEsc(t) + "(?![A-Za-z0-9_])").test(x)));
+  const short = s => String(s).split(" → ").map(p => p.endsWith("/") ? p.replace(/\/+$/, "").replace(/^.*\//, "") + "/" : p.replace(/^.*\//, "")).join(" → ");
+  const chip = full => full ? `<button class="chip" type="button" data-copy="${esc(full)}" title="${esc(full)} — 누르면 복사">${esc(short(full))}</button>` : "";
+  const nodeTitle = (vid, id) => ((views[vid].nodes || []).find(n => n.id === id) || {}).title || id;
 
   function el(tag, attrs, parent) {
     const e = document.createElementNS(NS, tag);
@@ -103,16 +142,20 @@ const MODEL = /*__ELI5_MODEL__*/null;
     if (ev.from_sym) return `${ev.from_sym} → ${ev.to_sym}`;
     return "";
   }
+  const shown = e => (state.ev || e.grade === "unknown") ? e.grade : "n";
 
   function header() {
-    const meta = MODEL.meta || {}, val = MODEL.validation || {}, c = val.counts || {};
+    const val = MODEL.validation || {}, c = val.counts || {};
     $("title").textContent = meta.target || "eli5";
-    const b = [`<span class="g-graft">graft ${c.graft || 0}</span>`, `<span class="g-code">코드 ${c.code || 0}</span>`,
-      `<span class="g-record">기록 ${c.record || 0}</span>`, `<span class="g-unknown">미확인 ${c.unknown || 0}</span>`];
-    if (val.quick) b.push('<span class="g-unknown">미검증 (--quick)</span>');
-    if (val.graft === "absent") b.push('<span class="g-unknown">graft 없음 — 실선 판정 불가</span>');
-    if (meta.commit) b.push(`<span class="plain">commit ${esc(meta.commit.slice(0, 7))}</span>`);
-    $("badges").innerHTML = b.join("");
+    $("summary").innerHTML = rich(meta.summary || "");
+    const kinds = [...new Set(Object.values(views).flatMap(v => (v.nodes || []).map(n => n.kind)))].filter(k => KIND[k]);
+    $("legend").innerHTML = kinds.map(k => `<span class="kd"><i style="background:var(--k-${k})"></i>${KIND[k]}</span>`).join("");
+    const chips = [`<span>근거 graft ${c.graft || 0} · 코드 ${c.code || 0} · 기록 ${c.record || 0} · 미확인 ${c.unknown || 0}</span>`];
+    if (val.quick) chips.push('<span class="warn">미검증 (--quick)</span>');
+    if (val.graft === "absent") chips.push('<span class="warn">graft 없음 — 실선 판정 불가</span>');
+    if (meta.commit) chips.push(`<span>commit ${esc(meta.commit.slice(0, 7))}</span>`);
+    $("chips").innerHTML = chips.join("");
+    $("ev").onchange = () => { state.ev = $("ev").checked; $("evlegend").hidden = !state.ev; draw(); side(); };
   }
   function crumbs() {
     const chain = [];
@@ -146,13 +189,13 @@ const MODEL = /*__ELI5_MODEL__*/null;
     for (const e of v.edges || []) {
       const a = nodes[e.from], b = nodes[e.to];
       if (!a || !b) continue;
-      const A = box(a), B = box(b);
+      const A = box(a), B = box(b), g2 = shown(e);
       const [x1, y1] = clip(A, B.x + B.w / 2, B.y + B.h / 2), [x2, y2] = clip(B, A.x + A.w / 2, A.y + A.h / 2);
       const dim = state.node && e.from !== state.node && e.to !== state.node;
       const g = el("g", {class: "edge" + (dim ? " dim" : "")}, svg);
-      el("path", {d: `M${x1},${y1} L${x2},${y2}`, class: "g-" + e.grade, "marker-end": `url(#ah-${e.grade})`}, g);
+      el("path", {d: `M${x1},${y1} L${x2},${y2}`, class: "g-" + g2, "marker-end": `url(#ah-${g2})`}, g);
       if (e.label) {
-        const t = el("text", {x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 4, "text-anchor": "middle", class: "g-" + e.grade}, g);
+        const t = el("text", {x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 4, "text-anchor": "middle", class: "g-" + g2}, g);
         t.textContent = e.label;
         try { const bb = t.getBBox(); g.insertBefore(el("rect", {x: bb.x - 3, y: bb.y - 1, width: bb.width + 6, height: bb.height + 2, class: "lbl-bg"}), t); } catch (_) {}
       }
@@ -162,9 +205,12 @@ const MODEL = /*__ELI5_MODEL__*/null;
     for (const n of v.nodes || []) {
       const B = box(n);
       const g = el("g", {class: "node" + (n.drill ? " drill" : "") + (state.node === n.id ? " sel" : "")}, svg);
-      el("rect", {x: B.x, y: B.y, width: B.w, height: B.h, rx: 6}, g);
-      el("text", {x: B.x + 10, y: B.y + 20, class: "title"}, g).textContent = n.title;
-      (n.lines || []).slice(0, 3).forEach((ln, i) => { el("text", {x: B.x + 10, y: B.y + 38 + i * 15, class: "sub"}, g).textContent = ln; });
+      el("rect", {x: B.x, y: B.y, width: B.w, height: B.h, rx: 6, class: "bg"}, g);
+      el("rect", {x: B.x + 1, y: B.y + 1, width: 5, height: B.h - 2, rx: 2, class: "k-" + (n.kind || "module")}, g);
+      el("text", {x: B.x + 16, y: B.y + 27, class: "title"}, g).textContent = n.title;
+      el("text", {x: B.x + 16, y: B.y + 47, class: "sub"}, g).textContent = n.say || "";
+      const terms = termsIn(n.title, n.say);
+      el("title", {}, g).textContent = (KIND[n.kind] || "") + terms.map(t => `\n${t}: ${gloss[t]}`).join("");
       if (n.drill) {
         const d = el("text", {x: B.x + B.w - 10, y: B.y + B.h - 8, "text-anchor": "end", class: "go"}, g);
         d.textContent = "안으로 ▸";
@@ -173,42 +219,68 @@ const MODEL = /*__ELI5_MODEL__*/null;
       g.addEventListener("click", () => select(state.node === n.id ? null : n.id));
     }
   }
-  function cards() {
-    const v = views[state.view];
-    const list = (v.ifaces || []).filter(f => !state.node || f.from === state.node || f.to === state.node);
-    $("cards-h").innerHTML = `인터페이스 ${list.length}개` + (state.node
-      ? ` — <b>${esc(state.node)}</b> 에 닿는 것만 <button class="link" id="showall">모두 보기</button>` : "");
-    if (state.node) $("showall").onclick = () => select(null);
-    $("cards").innerHTML = list.map(f => `<div class="card" id="card-${esc(state.view)}-${esc(f.id)}">
-      <div class="t">${esc(f.title)}</div><div class="m">${esc(f.from)} → ${esc(f.to)} · ${esc(f.transport || "")}</div>
-      ${(f.items || []).map(it => `<div><code>${esc(it.sig)}</code> ${esc(it.desc || "")} <span class="ref">${esc(it.ref || "")}</span></div>`).join("")}
-    </div>`).join("");
+  function ifaceCard(f) {
+    return `<div class="card" id="card-${esc(state.view)}-${esc(f.id)}">
+      <div class="t">${rich(f.title)}</div><div class="m">${esc(nodeTitle(state.view, f.from))} → ${esc(nodeTitle(state.view, f.to))} · ${esc(f.transport || "")}</div>
+      ${(f.items || []).map(it => `<div><code>${esc(it.sig)}</code> ${rich(it.desc || "")} ${chip(it.ref)}</div>`).join("")}
+    </div>`;
   }
+  function side() {
+    const v = views[state.view], n = state.node && (v.nodes || []).find(x => x.id === state.node);
+    if (!n) {
+      const list = v.ifaces || [];
+      $("side").innerHTML = `<h2>${esc(v.title)}</h2><p class="detail">박스를 누르면 하는 일과 들어 있는 코드가 여기 나온다.</p>`
+        + (list.length ? `<h3>이 층의 인터페이스 ${list.length}개</h3>` + list.map(ifaceCard).join("") : "");
+      return;
+    }
+    const conns = (v.edges || []).filter(e => e.from === n.id || e.to === n.id).map(e => {
+      const out = e.from === n.id, other = nodeTitle(state.view, out ? e.to : e.from);
+      return `<div class="conn">${out ? "→" : "←"} ${esc(other)} — ${esc(e.label || "")} <span class="tag g-${esc(e.grade)}">${GRADE[e.grade]}</span> ${chip(evText(e.evidence))}</div>`;
+    }).join("");
+    const code = [...(n.code || []), ...(n.paths || [])];
+    const ifs = (v.ifaces || []).filter(f => f.from === n.id || f.to === n.id);
+    const terms = termsIn(n.title, n.say, n.detail);
+    $("side").innerHTML = `<div class="k"><i style="background:var(--k-${esc(n.kind)})"></i>${KIND[n.kind] || ""}</div>
+      <h2>${rich(n.title)}</h2><p>${rich(n.say || "")}</p>${n.detail ? `<p class="detail">${rich(n.detail)}</p>` : ""}
+      ${n.drill ? `<p><button class="link" type="button" data-go="${esc(n.drill)}">안으로 들어가기 ▸</button></p>` : ""}
+      ${conns ? `<h3>연결</h3>${conns}` : ""}
+      ${code.length ? `<h3>들어 있는 코드</h3>${code.map(chip).join("")}` : ""}
+      ${ifs.length ? `<h3>인터페이스</h3>${ifs.map(ifaceCard).join("")}` : ""}
+      ${terms.length ? `<h3>용어</h3>${terms.map(t => `<div><b>${esc(t)}</b> — ${esc(gloss[t])}</div>`).join("")}` : ""}
+      <p><button class="link" type="button" data-close>닫기</button></p>`;
+  }
+  $("side").addEventListener("click", ev => {
+    const t = ev.target.closest && ev.target.closest("[data-copy],[data-go],[data-close]");
+    if (!t) return;
+    if (t.dataset.go) return go(t.dataset.go);
+    if (t.hasAttribute("data-close")) return select(null);
+    const text = t.dataset.copy, label = t.textContent;
+    try { navigator.clipboard.writeText(text); } catch (_) {}
+    t.textContent = "복사됨"; setTimeout(() => { t.textContent = label; }, 900);
+  });
   function lists() {
     const v = views[state.view], val = MODEL.validation || {};
-    $("hint").textContent = v.hint || "";
+    $("hint").innerHTML = rich(v.hint || "");
     $("rules").innerHTML = (v.rules || []).map(r =>
-      `<li>${esc(r.text)} <span class="tag g-${esc(r.grade)}">${GRADE[r.grade] || esc(r.grade)}</span> <span class="ref">${esc(evText(r.evidence))}</span></li>`).join("");
-    $("unknowns").innerHTML = (MODEL.unknowns || []).map(u => `<li>${esc(u.text)} <span class="ref">— ${esc(u.why || "")}</span></li>`).join("") || "<li>없음</li>";
+      `<li>${rich(r.text)} <span class="tag g-${esc(r.grade)}">${GRADE[r.grade] || esc(r.grade)}</span> ${chip(evText(r.evidence))}</li>`).join("");
+    $("unknowns").innerHTML = (MODEL.unknowns || []).map(u => `<li>${esc(u.text)} <span class="detail">— ${esc(u.why || "")}</span></li>`).join("") || "<li>없음</li>";
     const miss = val.missing_edges || [];
     $("missing").innerHTML = miss.length
-      ? miss.map(m => `<li>[${esc(views[m.view] ? views[m.view].title : m.view)}] ${esc(m.from)} → ${esc(m.to)} <span class="ref">예: ${esc(m.example)}</span></li>`).join("")
+      ? miss.map(m => `<li>[${esc(views[m.view] ? views[m.view].title : m.view)}] ${esc(views[m.view] ? nodeTitle(m.view, m.from) : m.from)} → ${esc(views[m.view] ? nodeTitle(m.view, m.to) : m.to)} ${chip(m.example)}</li>`).join("")
       : `<li>${esc(val.missing_edges_skipped || "없음")}</li>`;
     const d = val.downgrades || [];
     $("downs").innerHTML = d.length
-      ? d.map(x => `<li>${esc(x.id)} — ${GRADE[x.claimed]} → <b>${GRADE[x.result]}</b> <span class="ref">${esc(x.reason)}</span></li>`).join("")
+      ? d.map(x => `<li>${esc(x.id)} — ${GRADE[x.claimed]} → <b>${GRADE[x.result]}</b> <span class="detail">${esc(x.reason)}</span></li>`).join("")
       : "<li>없음</li>";
   }
   function go(vid) {
     if (!views[vid]) return;
     state.view = vid; state.node = null;
     if (location.hash !== "#view=" + encodeURIComponent(vid)) history.replaceState(null, "", "#view=" + encodeURIComponent(vid));
-    crumbs(); lists(); draw(); cards();
-    window.dispatchEvent(new CustomEvent("eli5:view", {detail: {view: vid}}));
+    crumbs(); lists(); draw(); side();
   }
   function select(nid) {
-    state.node = nid; draw(); cards();
-    window.dispatchEvent(new CustomEvent("eli5:select", {detail: {view: state.view, node: nid}}));
+    state.node = nid; draw(); side();
   }
   function flash(vid, ifaceId) {
     if (state.view !== vid) go(vid);
@@ -219,12 +291,11 @@ const MODEL = /*__ELI5_MODEL__*/null;
     c.classList.add("flash");
     setTimeout(() => c.classList.remove("flash"), 1600);
   }
-  function jumpRef(ref) { const t = refIndex.get(ref); if (t) flash(t.view, t.iface); return !!t; }
   window.addEventListener("hashchange", () => {
     const m = location.hash.match(/^#view=(.+)$/);
     if (m) { const v = decodeURIComponent(m[1]); if (v !== state.view) go(v); }
   });
-  window.ELI5 = {MODEL, state, go, select, jumpRef, refIndex};
+  window.ELI5 = {MODEL, state, go, select};
   header();
   const m = location.hash.match(/^#view=(.+)$/);
   go(m && views[decodeURIComponent(m[1])] ? decodeURIComponent(m[1]) : rootView);

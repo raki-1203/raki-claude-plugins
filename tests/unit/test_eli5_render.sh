@@ -45,7 +45,13 @@ PY
 [ "$(jq -r .dirty "$S")" = "false" ] && [ "$(jq -r .version "$S")" = "1" ] && pass "dirty=false, version=1" || fail "사이드카 필드" "$(cat "$S")"
 [ "$(jq -r .meta.commit "$M")" = "$(git -C "$R" rev-parse HEAD)" ] && pass "모델 meta.commit 갱신" || fail "meta.commit"
 grep -q '<title>fixture 앱 — eli5</title>' "$H" && pass "title 치환" || fail "title"
-grep -q 'window.ELI5' "$H" && grep -q 'eli5:select' "$H" && pass "패널 계약(window.ELI5·이벤트)" || fail "패널 계약"
+for id in summary legend chips ev side unknowns downs missing; do
+  grep -q "id=\"$id\"" "$H" || { fail "DOM 계약 #$id"; continue; }
+done && pass "DOM 계약 (summary·legend·chips·ev·side·unknowns·downs·missing)"
+grep -q '<details id="report">' "$H" && pass "검증 리포트는 접힌 details" || fail "접힌 리포트"
+grep -q 'window.ELI5 = {MODEL, state, go, select}' "$H" && pass "window.ELI5 계약" || fail "window.ELI5"
+! grep -q 'eli5:select\|panel\|/api/ask' "$H" && pass "패널 흔적 없음" || fail "패널 흔적"
+! grep -q 'n.lines' "$H" && pass "박스에 lines 를 그리지 않음" || fail "lines 잔존"
 echo "# x" >> "$R/src/core/engine.py"
 python3 "$ELI5_BIN/render.py" "$M" --root "$R" >/dev/null
 [ "$(jq -r .dirty "$S")" = "true" ] && pass "scope 안 미커밋 변경 → dirty=true" || fail "dirty 감지"
@@ -61,4 +67,11 @@ assert p.read_text(encoding="utf-8") == "old"
 assert not [x for x in d.iterdir() if x.name.startswith(".a.html.")]
 render.write_atomic(p, "new"); assert p.read_text(encoding="utf-8") == "new"
 PY
+if command -v node >/dev/null 2>&1; then
+  SHORT=$(grep -o 'const short = .*;$' "$ELI5_FIX/../../../skills/eli5/assets/map.html")
+  out=$(node -e "$SHORT; console.log([short('src/core/'), short('src/core/engine.py:5'), short('src/a/x.py#f → src/b/y.py#g'), short('handle')].join('|'))")
+  [ "$out" = "core/|engine.py:5|x.py#f → y.py#g|handle" ] && pass "칩 이름 줄이기 (폴더는 마지막 폴더/)" || fail "칩 이름 줄이기" "$out"
+else
+  echo "  ⏭️  node 없음 — 칩 이름 테스트 건너뜀"
+fi
 finish
