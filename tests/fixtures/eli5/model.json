@@ -1,5 +1,12 @@
 {
-  "meta": {"target": "fixture 앱", "scope": ["src/"], "graft_version": "0.16.0"},
+  "meta": {
+    "version": 3,
+    "target": "fixture 앱",
+    "summary": "요청을 받아 작업을 실행하고, 실행 결과를 에이전트 서비스에 넘긴다.",
+    "glossary": {"API": "다른 프로그램이 부를 수 있게 열어 둔 입구", "HTTP": "웹에서 요청을 주고받는 약속"},
+    "scope": ["src/"],
+    "graft_version": "0.16.0"
+  },
   "views": {
     "L0": {
       "title": "L0 · 실행 단위",
@@ -9,14 +16,18 @@
         {"text": "엔진은 HTTP 로 에이전트를 부른다", "grade": "record", "evidence": {"ref": "docs/adr-1.md"}}
       ],
       "nodes": [
-        {"id": "api", "title": "API 서버", "lines": ["handle(req)"], "row": 0, "col": 0, "paths": ["src/api/"]},
-        {"id": "core", "title": "엔진", "lines": ["run_job(job_id)"], "row": 0, "col": 1, "paths": ["src/core/"], "drill": "L1-core"},
-        {"id": "agent", "title": "에이전트 서비스", "lines": ["외부 HTTP"], "row": 1, "col": 1, "paths": []}
+        {"id": "api", "kind": "service", "title": "요청 받는 곳", "say": "들어온 요청을 엔진에 넘긴다",
+         "code": ["src/api/server.py", "handle"], "row": 0, "col": 0, "paths": ["src/api/"]},
+        {"id": "core", "kind": "module", "title": "작업 엔진", "say": "작업 하나를 실행한다",
+         "detail": "작업 번호를 받아 실행하고 결과를 에이전트에 보낸다.",
+         "code": ["src/core/engine.py", "run_job"], "row": 0, "col": 1, "paths": ["src/core/"], "drill": "L1-core"},
+        {"id": "agent", "kind": "external", "title": "에이전트 서비스", "say": "바깥에서 작업을 받아 처리한다",
+         "row": 1, "col": 1, "paths": []}
       ],
       "edges": [
-        {"from": "api", "to": "core", "label": "run_job", "iface": "run_job", "grade": "graft",
+        {"from": "api", "to": "core", "label": "작업 실행", "iface": "run_job", "grade": "graft",
          "evidence": {"from_sym": "src/api/server.py#handle", "to_sym": "src/core/engine.py#run_job"}},
-        {"from": "core", "to": "agent", "label": "POST /run", "iface": "agent-http", "grade": "code",
+        {"from": "core", "to": "agent", "label": "작업 전달", "iface": "agent-http", "grade": "code",
          "evidence": {"ref": "src/core/engine.py:5", "quote": "requests.post"}},
         {"from": "agent", "to": "api", "label": "결과 콜백?", "grade": "unknown", "evidence": {}}
       ],
@@ -28,12 +39,13 @@
       ]
     },
     "L1-core": {
-      "title": "L1 · 엔진",
-      "hint": "엔진 내부",
+      "title": "L1 · 작업 엔진",
+      "hint": "엔진 안쪽",
       "parent": "L0",
       "rules": [],
       "nodes": [
-        {"id": "engine", "title": "engine.py", "lines": ["run_job"], "row": 0, "col": 0, "paths": ["src/core/engine.py"]}
+        {"id": "engine", "kind": "module", "title": "작업 실행기", "say": "작업을 실행하고 결과를 보낸다",
+         "code": ["src/core/engine.py"], "row": 0, "col": 0, "paths": ["src/core/engine.py"]}
       ],
       "edges": [],
       "ifaces": []

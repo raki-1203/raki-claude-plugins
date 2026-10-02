@@ -14,6 +14,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import plain  # noqa: E402
+
 GRADES = ("graft", "code", "record", "unknown")
 RULE_GRADES = ("code", "record", "unknown")
 GRAFT_BIN = os.environ.get("ELI5_GRAFT_BIN", "graft")
@@ -58,6 +61,48 @@ def integrity_errors(model):
         for r in v.get("rules", []):
             if r.get("grade") not in RULE_GRADES:
                 errs.append(f"{vid}: rule '{r.get('text')}' 등급 '{r.get('grade')}' — 규칙은 code/record/unknown 만 허용")
+    return errs
+
+
+def v3_errors(model):
+    """v3 지도 규칙 — 사람이 읽는 글에 코드 이름이 없고, 낯선 용어에 풀이가 있다."""
+    meta = model.get("meta") or {}
+    if meta.get("version") != 3:
+        return [f"meta.version 이 {meta.get('version')!r} — v3 지도만 검증한다. v2 지도는 다시 만든다"]
+    errs = []
+    g = meta.get("glossary") or {}
+    if not isinstance(g, dict):
+        errs.append("meta.glossary 는 {용어: 풀이} 객체여야 한다")
+        g = {}
+    for k, v in g.items():
+        if not isinstance(v, str) or not v.strip():
+            errs.append(f"meta.glossary['{k}'] 풀이가 비었다 — 한 문장으로 쓴다")
+    errs += plain.glossary_key_errors(g)
+    s = meta.get("summary")
+    if not isinstance(s, str) or not s.strip():
+        errs.append("meta.summary 가 비었다 — 이 시스템이 무엇을 하는지 1~2문장으로 쓴다")
+    else:
+        errs += plain.check_plain("meta.summary", s, g)
+    for vid, v in (model.get("views") or {}).items():
+        errs += plain.check_plain(f"{vid}.title", v.get("title") or "", g)
+        errs += plain.check_plain(f"{vid}.hint", v.get("hint") or "", g)
+        for n in v.get("nodes", []):
+            w = f"{vid}/{n.get('id')}"
+            if "lines" in n:
+                errs.append(f"{w}.lines 는 v3 에서 없어졌다 — 박스 한 줄은 say, 코드 이름은 code[], 긴 설명은 detail")
+            if n.get("kind") not in plain.KINDS:
+                errs.append(f"{w}.kind '{n.get('kind')}' — {' · '.join(plain.KINDS)} 중 하나")
+            for field, limit in (("title", plain.TITLE_MAX), ("say", plain.SAY_MAX)):
+                t = n.get(field)
+                if not isinstance(t, str) or not t.strip():
+                    errs.append(f"{w}.{field} 가 비었다 — 쉬운 말로 쓴다")
+                else:
+                    errs += plain.check_plain(f"{w}.{field}", t, g, limit)
+            if not isinstance(n.get("code", []), list):
+                errs.append(f"{w}.code 는 문자열 목록이어야 한다")
+        for e in v.get("edges", []):
+            if e.get("label"):
+                errs += plain.check_plain(f"{vid}: {e.get('from')}→{e.get('to')} label", e["label"], g, plain.LABEL_MAX)
     return errs
 
 
@@ -209,7 +254,7 @@ def main():
     a = ap.parse_args()
     mp, root = Path(a.model), Path(a.root).resolve()
     model = json.loads(mp.read_text(encoding="utf-8"))
-    errs = integrity_errors(model)
+    errs = integrity_errors(model) + v3_errors(model)
     if errs:
         print(json.dumps({"integrity_errors": errs}, ensure_ascii=False, indent=2))
         return 1
