@@ -11,12 +11,20 @@ cp "$ELI5_FIX/model.json" "$M"
 
 echo "🔧 render"
 python3 "$ELI5_BIN/render.py" "$M" --root "$R" >/dev/null 2>&1 && fail "validate 전 render 거부" || pass "validate 전 render 거부"
+cp "$M" "$T/v2.model.json"
+python3 - "$T/v2.model.json" <<'PY'
+import json, sys
+p = sys.argv[1]; m = json.load(open(p, encoding="utf-8")); m["meta"]["version"] = 2; m["validation"] = {}
+json.dump(m, open(p, "w", encoding="utf-8"), ensure_ascii=False)
+PY
+out=$(python3 "$ELI5_BIN/render.py" "$T/v2.model.json" --root "$R"); rc=$?
+[ $rc -eq 1 ] && echo "$out" | jq -e '.error|test("v3")' >/dev/null && pass "v2 모델 render 거부" || fail "v2 거부" "rc=$rc $out"
 python3 "$ELI5_BIN/validate.py" "$M" --root "$R" >/dev/null
 python3 - "$M" <<'PY'
 import json, sys
 p = sys.argv[1]
 m = json.load(open(p, encoding="utf-8"))
-m["views"]["L0"]["hint"] = "</script><b>x</b>"
+m["views"]["L0"]["hint"] = "</script><b>x</b><!--y-->"
 json.dump(m, open(p, "w", encoding="utf-8"), ensure_ascii=False)
 PY
 out=$(python3 "$ELI5_BIN/render.py" "$M" --root "$R"); rc=$?
@@ -29,7 +37,8 @@ h = open(sys.argv[1], encoding="utf-8").read()
 assert h.count("</script>") == 1, h.count("</script>")
 m = re.search(r"const MODEL = (.*?);\n\(function", h, re.S)
 model = json.loads(m.group(1))
-assert model["views"]["L0"]["hint"] == "</script><b>x</b>"
+assert "<!--" not in h.split("const MODEL = ", 1)[1].split(";\n(function", 1)[0]
+assert model["views"]["L0"]["hint"] == "</script><b>x</b><!--y-->"
 assert model["validation"]["counts"]["graft"] == 1
 PY
 [ "$(jq -r .commit "$S")" = "$(git -C "$R" rev-parse HEAD)" ] && pass "사이드카 commit = HEAD" || fail "사이드카 commit" "$(cat "$S")"
@@ -40,4 +49,16 @@ grep -q 'window.ELI5' "$H" && grep -q 'eli5:select' "$H" && pass "패널 계약(
 echo "# x" >> "$R/src/core/engine.py"
 python3 "$ELI5_BIN/render.py" "$M" --root "$R" >/dev/null
 [ "$(jq -r .dirty "$S")" = "true" ] && pass "scope 안 미커밋 변경 → dirty=true" || fail "dirty 감지"
+python3 - "$ELI5_BIN" "$T" <<'PY' && pass "원자적 쓰기 — 실패 시 기존 파일 보존·임시 파일 없음" || fail "원자적 쓰기"
+import sys; from pathlib import Path
+sys.path.insert(0, sys.argv[1]); import render
+d = Path(sys.argv[2]); p = d / "a.html"; p.write_text("old", encoding="utf-8")
+try:
+    render.write_atomic(p, None)  # 쓰기 중 TypeError
+except TypeError:
+    pass
+assert p.read_text(encoding="utf-8") == "old"
+assert not [x for x in d.iterdir() if x.name.startswith(".a.html.")]
+render.write_atomic(p, "new"); assert p.read_text(encoding="utf-8") == "new"
+PY
 finish
