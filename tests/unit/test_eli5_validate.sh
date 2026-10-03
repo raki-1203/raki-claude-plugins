@@ -109,6 +109,15 @@ integrity 'm["scenarios"][0]["steps"]=[{"box":"core","title":"엔진","body":"�
 fresh; edit 'm["scenarios"][0]["steps"].insert(2, {"box":"init","title":"입구","body":"입구"}); m["scenarios"][0]["steps"][3]["box"]="agent"'
 out=$(run); [ $? -eq 0 ] && [ "$(echo "$out" | jq -r '.scenarios.run[3].edge')" = "1" ] && pass "지나온 박스 중 하나에서 이어지면 통과 (나무 모양)" || fail "나무 모양 잇기" "$out"
 fresh; edit 'del m["scenarios"]'; run >/dev/null; [ $? -eq 0 ] && pass "시나리오 없는 모델 통과" || fail "시나리오 없음"
+echo "🔧 갈림길"
+fresh; out=$(run); [ "$(echo "$out" | jq -c .branches)" = '{"1":"code"}' ] && pass "갈림길 조건 근거 판정 기록" || fail "갈림길 기록" "$(echo "$out" | jq -c .branches)"
+fresh; edit 'm["views"]["L0"]["edges"][1]["when_evidence"]["quote"]="requests.get("'
+out=$(run); [ $? -eq 0 ] && [ "$(echo "$out" | jq -r '.branches["1"]')" = "unknown" ] && pass "조건 근거가 틀리면 unknown (exit 0)" || fail "조건 근거" "$out"
+integrity 'm["views"]["L0"]["edges"][1]["kind"]="maybe"' "call · branch" "kind 허용값"
+integrity 'm["views"]["L0"]["edges"][1].pop("when")' "when 이 비었다" "갈림길에 when 필수"
+integrity 'm["views"]["L0"]["edges"][1].pop("when_evidence")' "when_evidence 가 없다" "갈림길에 근거 필수"
+integrity 'm["views"]["L0"]["edges"][0]["when"]="항상"' "갈림길.kind: branch.에만" "when 은 갈림길에만"
+integrity 'm["views"]["L0"]["edges"][1]["when"]="run_job 이 끝나면"' "run_job" "조건에 코드 이름"
 echo "🔧 누락 탐지"
 mkdir -p "$T/r/graft/.graph"
 cat > "$T/r/graft/.graph/wiring.json" <<'J'

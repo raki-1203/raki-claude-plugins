@@ -248,6 +248,41 @@ def scenario_report(model, root, quick):
     return out
 
 
+def branch_errors(model):
+    """갈림길 — 조건에 따라 하나만 가는 화살표는 쉬운 말 조건(when)과 그 코드 근거를 단다."""
+    g = (model.get("meta") or {}).get("glossary") or {}
+    errs = []
+    for vid, v in (model.get("views") or {}).items():
+        for e in v.get("edges", []):
+            w, kind = f"{vid}: {e.get('from')}→{e.get('to')}", e.get("kind")
+            if kind not in (None, "call", "branch"):
+                errs.append(f"{w}.kind '{kind}' — call · branch 중 하나 (조건에 따라 하나만 가면 branch)")
+            if kind != "branch":
+                if "when" in e or "when_evidence" in e:
+                    errs.append(f"{w}: when 은 갈림길(kind: branch)에만 — kind 를 branch 로 하거나 when 을 뺀다")
+                continue
+            when = e.get("when")
+            if not isinstance(when, str) or not when.strip():
+                errs.append(f"{w}: 갈림길인데 when 이 비었다 — 어떤 상황에서 이쪽으로 가는지 쉬운 말로 쓴다")
+            else:
+                errs += plain.check_plain(f"{w}.when", when, g, plain.SAY_MAX)
+            ev = e.get("when_evidence") or {}
+            if not ev.get("ref") or not ev.get("quote"):
+                errs.append(f"{w}: when_evidence 가 없다 — 조건이 적힌 코드 줄을 ref(path:line)·quote 로 단다")
+    return errs
+
+
+def branch_report(model, root, quick):
+    """{"<화살표 번호>": "code" | "unknown"} — 갈림길 조건의 근거를 판정한다. 틀리면 그 조건을 미확인으로 보인다."""
+    view = next(iter(model["views"].values()))
+    out = {}
+    for i, e in enumerate(view.get("edges", [])):
+        if e.get("kind") == "branch":
+            ok, _ = check_code(e.get("when_evidence") or {}, root, quick)
+            out[str(i)] = "code" if ok else "unknown"
+    return out
+
+
 def under(path, prefixes):
     for p in prefixes or []:
         p = p.rstrip("/")
@@ -399,7 +434,7 @@ def main():
     a = ap.parse_args()
     mp, root = Path(a.model), Path(a.root).resolve()
     model = json.loads(mp.read_text(encoding="utf-8"))
-    errs = integrity_errors(model) + v3_errors(model)
+    errs = integrity_errors(model) + v3_errors(model) + branch_errors(model)
     if not errs:  # 시나리오는 지도가 맞을 때만 판정한다
         errs = scenario_errors(model)
     if errs:
@@ -438,7 +473,7 @@ def main():
     missing, skipped = missing_edges(model, root)
     report = {"counts": counts, "downgrades": downgrades, "integrity_errors": [],
               "missing_edges": missing, "missing_edges_skipped": skipped,
-              "graft": a.graft_status, "quick": a.quick, "scenarios": scenario_report(model, root, a.quick)}
+              "graft": a.graft_status, "quick": a.quick, "scenarios": scenario_report(model, root, a.quick), "branches": branch_report(model, root, a.quick)}
     model["validation"] = report
     mp.write_text(json.dumps(model, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
