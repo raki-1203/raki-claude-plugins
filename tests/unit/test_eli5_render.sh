@@ -124,4 +124,7 @@ grep -q 'const forks = id => (V.edges || \[\]).map((e, i) => \[e, i\]).filter((\
   && pass "안쪽 박스는 속한 묶음의 갈림길도 보인다" || fail "묶음 갈림길"
 grep -q '위에서부터 차례로 본다' "$TPL" && pass "갈래가 여럿이면 위에서부터 차례로 본다고 알린다" || fail "갈래 순서 안내"
 grep -q 'class: "fdot' "$TPL" && grep -q '전체에서' "$TPL" && pass "묶음 테두리에서 나가는 화살표는 점과 '전체에서' 표시" || fail "묶음 출발 표시"
+grep -q 'const TR = MODEL.track' "$TPL" && grep -q 'function trCard' "$TPL" && grep -q 'function trackbar' "$TPL" && grep -q 'eli5-track:' "$TPL" && grep -q '진행 상황으로' "$TPL" \
+  && pass "추적 화면 — 진행 카드·머리 막대·박스 상태·새로 완료 반짝임·박스 카드에서 돌아가기" || fail "추적 화면"
+grep -q 'x: r\[0\] + r\[2\] - 4, y: r\[1\] - 6, "text-anchor": "end", class: "tagg"' "$TPL" && pass "묶음 집계는 테두리 위 — 이름과 겹치지 않게" || fail "묶음 집계 위치"
 finish
