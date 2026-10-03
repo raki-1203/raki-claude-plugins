@@ -49,7 +49,7 @@ for id in summary legend chips ev side unknowns downs missing; do
   grep -q "id=\"$id\"" "$H" || { fail "DOM 계약 #$id"; continue; }
 done && pass "DOM 계약 (summary·legend·chips·ev·side·unknowns·downs·missing)"
 grep -q '<details id="report">' "$H" && pass "검증 리포트는 접힌 details" || fail "접힌 리포트"
-grep -q 'window.ELI5 = {MODEL, state, go, select}' "$H" && pass "window.ELI5 계약" || fail "window.ELI5"
+grep -q 'window.ELI5 = {MODEL, state, go, select, play}' "$H" && pass "window.ELI5 계약" || fail "window.ELI5"
 ! grep -q 'eli5:select\|panel\|/api/ask' "$H" && pass "패널 흔적 없음" || fail "패널 흔적"
 ! grep -q 'n.lines' "$H" && pass "박스에 lines 를 그리지 않음" || fail "lines 잔존"
 echo "# x" >> "$R/src/core/engine.py"
@@ -99,4 +99,18 @@ grep -q 'MODEL.layout' "$TPL" && grep -q 'class: "frame' "$TPL" && grep -q 'data
 grep -q '속한 묶음' "$TPL" && grep -q 'data-sel="${esc(n.group)}"' "$TPL" && pass "안쪽 박스 카드에 속한 묶음 링크" || fail "속한 묶음 링크"
 grep -q 'body.card-open main{padding-right' "$TPL" && grep -q 'classList.toggle("card-open"' "$TPL" && grep -q 'width:min(340px,100vw)' "$TPL" \
   && pass "카드가 열리면 지도를 밀어낸다 (넓은 화면)" || fail "카드 밀어내기"
+grep -q 'id="scbar"' "$TPL" && grep -q 'data-step' "$TPL" && grep -q 'data-back' "$TPL" && grep -q '#scenario=' "$TPL" && grep -q 'class: "badge"' "$TPL" \
+  && pass "시나리오 UI — 버튼 줄·단계 이동·시나리오로 돌아가기·주소·번호 배지" || fail "시나리오 UI"
+python3 - "$H" <<'PY' && pass "payload 에 시나리오 기록" || fail "payload 시나리오"
+import json, re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+m = json.loads(re.search(r"const MODEL = (.*?);\n\(function", h, re.S).group(1))
+assert m["scenarios"][0]["id"] == "run" and len(m["validation"]["scenarios"]["run"]) == 3
+PY
+if command -v node >/dev/null 2>&1; then
+  BODY=$(grep -o 'const stepBody = .*;$' "$TPL"); ESC=$(grep -o 'const esc = .*;$' "$TPL")
+  out=$(node -e "const NODE={core:{title:'작업 <엔진>'}}; $ESC; $BODY; console.log(stepBody('<b>x</b> {{core}} {{ghost}}'))")
+  echo "$out" | grep -q '&lt;b&gt;x&lt;/b&gt;' && echo "$out" | grep -q 'data-sel="core">작업 &lt;엔진&gt;</button>' && echo "$out" | grep -q '{{ghost}}' \
+    && pass "본문 이스케이프 — {{id}} 만 박스 버튼" || fail "본문 이스케이프" "$out"
+fi
 finish
