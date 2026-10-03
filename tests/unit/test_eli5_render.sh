@@ -122,4 +122,5 @@ grep -q 'id: "fk-" + g' "$TPL" && grep -q 'function forkHtml' "$TPL" && grep -q 
   && pass "갈림길 UI — 마름모 시작점·◆·갈라지는 목록·화살표 강조·다른 길 따라가기" || fail "갈림길 UI"
 grep -q 'const forks = id => (V.edges || \[\]).map((e, i) => \[e, i\]).filter((\[e\]) => e.kind === "branch" && (e.from === id || (NODE\[id\] && e.from === NODE\[id\].group)))' "$TPL" \
   && pass "안쪽 박스는 속한 묶음의 갈림길도 보인다" || fail "묶음 갈림길"
+grep -q '위에서부터 차례로 본다' "$TPL" && pass "갈래가 여럿이면 위에서부터 차례로 본다고 알린다" || fail "갈래 순서 안내"
 finish

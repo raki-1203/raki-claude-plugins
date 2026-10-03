@@ -272,7 +272,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
   function forkHtml(id, taken) {
     const list = forks(id), BR = (MODEL.validation || {}).branches || {};
     if (!list.length) return "";
-    return `<div class="fork"><b>◆ 여기서 갈라진다</b>${list.map(([e, i]) => {
+    return `<div class="fork"><b>◆ 여기서 갈라진다</b>${list.length > 1 ? ` <span class="detail">— 위에서부터 차례로 본다</span>` : ""}${list.map(([e, i]) => {
       const on = taken === i;
       const other = SCS.map(s => [s, (SCV[s.id] || []).findIndex(r => r.edge === i)]).find(([s, k]) => k > 0 && !(on && s.id === state.sc));
       return `<div class="br${on ? " on" : ""}" data-hl="${i}">${on ? "●" : "○"} ${rich(e.when || "")} → <b>${esc(nodeTitle(state.view, e.to))}</b>`
