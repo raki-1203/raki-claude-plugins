@@ -55,7 +55,7 @@ Turns your Obsidian vault into an LLM-maintained knowledge base using Andrej Kar
 | `wiki-lint` | 위키 건강 점검 |
 | `wiki-init` | 빈 볼트 초기화 |
 | `migrate-v3` | v2 → v3 마이그레이션 (1회성) |
-| `eli5` | 코드를 안 읽는 사람도 읽는 드릴다운 HTML 지도 — 근거는 graft 로 판정, 박스 글은 쉬운 말로 검증 |
+| `eli5` | 코드를 안 읽는 사람도 읽는 한 장 HTML 지도 — 근거는 graft 로 판정, 박스 글은 쉬운 말로 검증 |
 
 ## 작업 프롬프트 자동 적용
 

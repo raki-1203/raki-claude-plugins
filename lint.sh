@@ -208,7 +208,7 @@ else
   fail "task-router 유닛 테스트 — bash tests/unit/test_task_router.sh"
 fi
 
-for t in prep plain validate render open; do
+for t in prep plain layout validate render open; do
   if bash "tests/unit/test_eli5_$t.sh" >/dev/null 2>&1; then
     pass "eli5 $t 유닛 테스트"
   else

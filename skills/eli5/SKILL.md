@@ -1,6 +1,6 @@
 ---
 name: eli5
-description: "코드베이스·시스템 구조를 코드를 읽지 않는 사람도 한눈에 이해하는 드릴다운 HTML 지도로 만든다. 박스는 쉬운 이름 한 줄, 코드 이름·근거는 박스를 누르면 펼쳐지는 카드에. 화살표마다 graft 호출 그래프·소스 인용·기록으로 근거를 기계 판정하고(토글로 표시), 박스·화살표 글에 코드 이름이 섞이거나 풀이 없는 용어가 있으면 검증기가 거부한다. '그림으로 설명해줘', '구조 좀 그려줘', '이 코드 어떻게 도는지 보여줘', '아키텍처 지도', '/rakis:eli5 <대상>' 일 때 사용. 낯선 모듈 파악·설계 검토·장애 경로 추적·구현 전 정렬 확인."
+description: "코드베이스·시스템 구조를 코드를 읽지 않는 사람도 한눈에 이해하는 한 장 HTML 지도(안쪽이 있는 박스는 묶음으로 펼침)로 만든다. 박스는 쉬운 이름 한 줄, 코드 이름·근거는 박스를 누르면 펼쳐지는 카드에. 화살표마다 graft 호출 그래프·소스 인용·기록으로 근거를 기계 판정하고(토글로 표시), 박스·화살표 글에 코드 이름이 섞이거나 풀이 없는 용어가 있으면 검증기가 거부한다. '그림으로 설명해줘', '구조 좀 그려줘', '이 코드 어떻게 도는지 보여줘', '아키텍처 지도', '/rakis:eli5 <대상>' 일 때 사용. 낯선 모듈 파악·설계 검토·장애 경로 추적·구현 전 정렬 확인."
 version: 3.0.0
 license: MIT
 ---
@@ -80,11 +80,12 @@ python3 "$SKILL/bin/graft_prep.py" --root "$ROOT" --out-dir "<$OUT 의 $ROOT 상
            "scope": ["src/"], "graft_version": "<Phase 0 version>"},
   "views": {
     "L0": {
-      "title": "L0 · <쉬운 말>", "hint": "<이 층을 한 문장으로>", "parent": null,
+      "title": "<지도 이름>", "hint": "<지도를 한 문장으로>", "parent": null,
       "rules": [{"text": "<설계 규칙>", "grade": "code|record|unknown", "evidence": {}}],
-      "nodes": [{"id": "api", "kind": "service", "title": "요청 받는 곳", "say": "<박스에 그리는 한 줄>",
-                 "detail": "<카드에만 — 2~3문장>", "code": ["src/api/server.py", "handle"],
-                 "row": 0, "col": 0, "span": 1, "paths": ["src/api/"], "drill": "L1-api"}],
+      "nodes": [{"id": "api", "kind": "service", "title": "요청 받는 곳", "say": "<묶음 머리 한 줄>"},
+                {"id": "route", "group": "api", "kind": "module", "title": "요청 입구", "say": "<박스에 그리는 한 줄>",
+                 "detail": "<카드에만 — 2~3문장>", "code": ["src/api/routes.py", "handle"],
+                 "row": 0, "col": 1, "span": 1, "paths": ["src/api/routes.py"]}],
       "edges": [{"from": "api", "to": "core", "label": "<쉬운 말>", "iface": "<iface id>",
                  "grade": "graft|code|record|unknown", "evidence": {}}],
       "ifaces": [{"id": "...", "title": "...", "from": "api", "to": "core", "transport": "python call|http|queue|subprocess|file",
@@ -103,7 +104,7 @@ python3 "$SKILL/bin/graft_prep.py" --root "$ROOT" --out-dir "<$OUT 의 $ROOT 상
 | view `title`·`hint` | 쉬운 말 |
 | node `title` | 쉬운 이름, 24칸 이하 (한글 2칸·영숫자 1칸) |
 | node `say` | 필수. 하는 일 한 줄, 30칸 이하 |
-| edge `label` | 쉬운 말, 18칸 이하 |
+| edge `label` | 쉬운 말, 14칸 이하 |
 | node `kind` | 필수. `person`(사람) · `external`(외부 시스템) · `service`(서비스) · `module`(내부 모듈) · `store`(저장소) · `job`(작업). 박스 색과 범례가 된다 |
 | `meta.glossary` | 글에 나오는 제품·기술 용어(`PostgreSQL`, `LangGraph`, `API`, `SSE`)마다 한 문장 풀이. 화면에서 점선 밑줄 + 풀이 |
 
@@ -120,7 +121,10 @@ python3 "$SKILL/bin/graft_prep.py" --root "$ROOT" --out-dir "<$OUT 의 $ROOT 상
 
 작성 규칙:
 
-- 레이어: L0 = 프로세스·저장소·외부 시스템. 분해할 게 남은 박스는 `drill` 로 하위 view 를 만든다. view 하나에 박스 5~9 개
+- **지도는 한 장이다.** `views` 에는 view 하나, `parent` 는 `null`, `drill` 은 쓰지 않는다. 바깥에서 본 단위(프로세스·저장소·외부 시스템)를 박스로 두고, 안쪽을 보여 줄 박스는 **묶음**으로 펼친다 — 안쪽 박스에 `"group": "<바깥 박스 id>"` 를 단다
+- 묶음은 자기 `row`·`col`·`paths` 를 쓰지 않는다 (안쪽 박스로 계산). 안쪽 박스 2개 이상, 묶음 안의 묶음 금지. 바깥 박스를 가리키려고 안쪽에 대역 박스를 다시 그리지 않는다 — 화살표를 진짜 박스로 잇는다
+- 열은 0~4 (한 화면 폭). 흐름 순서대로 왼→오, 위→아래. 같은 칸 금지
+- **화살표는 직선이고, 다른 박스·묶음을 지나면 검증기가 거부한다.** 오류가 "어느 박스를 지나는지" 말해 준다. 멀리 되돌아가는 화살표(보고·콜백)는 가장자리 열이나 빈 행으로 길을 비운다. 묶음 밖 박스를 묶음 테두리 안에 두지 않는다
 - 모든 박스에 `paths[]` — 그 박스가 담당하는 경로 접두사. 외부 시스템은 `[]`. graft 판정은 증거 심볼이 이 경로 안에 있는지까지 본다
 - `rules[]` 는 "A 는 B 를 import 하지 않는다" 같은 설계 규칙. **`graft` 등급 금지** (부재는 callers 로 증명할 수 없다)
 - 격자: 흐름 방향대로 왼→오, 위→아래. 같은 칸 금지. 화살표는 직선이므로 사이에 다른 박스가 끼지 않게 배치한다
@@ -135,6 +139,7 @@ python3 "$SKILL/bin/validate.py" "$MODEL" --root "$ROOT" --graft-status <Phase 0
 - **exit 1** — `integrity_errors` 의 각 줄 `— ` 뒤에 고칠 방법이 있다. 그대로 고치고 다시 실행한다. 3 회 연속 실패하면 멈추고 오류 목록을 보고한다
   - 쉬운 말 오류는 **글을 다시 쓴다.** 코드 이름을 `glossary` 에 넣어 통과시키지 않는다 (검증기가 코드 이름 키를 거부한다)
   - 길이 오류는 줄이거나 `detail` 로 옮긴다
+  - 관통·테두리 오류는 박스 칸(row·col)을 옮긴다. 화살표를 지워서 피하지 않는다 — 지운 관계는 "그림에 없는 관계" 로 다시 나온다
 - **exit 0** — 리포트를 읽는다
   - `downgrades`: **받아들인다.** 강등을 피하려고 근거를 바꾸지 않는다. 예외는 하나 — 사유가 "paths 밖" 이고 박스 `paths[]` 를 실제로 잘못 잡은 경우에만 paths 를 고쳐 재검증한다
   - `missing_edges`: graft 가 찾았는데 그림에 없는 관계. 의미 있는 관계면 graft 등급 edge 로 추가하고 재검증한다. 의도적으로 뺐다면 그대로 둔다 (접힌 검증 리포트에 남는다)
@@ -191,6 +196,7 @@ python3 "$SKILL/bin/open.py" open "$OUT/<slug>.html"
 - 그 외 — `python3 "$SKILL/bin/open.py" open "<html>"`
 
 v2 모델(`meta.version` 없음)은 `render.py` 가 거부한다. "예전 형식 지도라 다시 만든다" 고 알리고 Phase 1 부터.
+층이 여러 개인 v3 초기 지도(views 2개 이상·drill)도 검증기가 거부한다 — 안쪽 층을 묶음으로 옮겨 다시 만든다.
 
 ## 하지 않는 것
 
@@ -205,6 +211,6 @@ v2 모델(`meta.version` 없음)은 `render.py` 가 거부한다. "예전 형식
 - 보강 조건 — [앤트로픽의 ELI5 스킬 (desty, 2026-08-23)](https://desty.github.io/blog/60-eli5-visual-explainer/)
 - 그림 글과 카드 글 분리·문체 규칙 파일·Orca 탭 열기·원자적 쓰기 — [lcalmsky/deadhd](https://github.com/lcalmsky/deadhd) (MIT, Copyright (c) 2026 lcalmsky)
 - 쉬운 이름과 의미 분류·글자 칸 수(`textUnits`)·고칠 방법을 담은 오류 — [tt-a1i/archify](https://github.com/tt-a1i/archify) (MIT, Copyright (c) 2026 tt-a1i, 2025 Cocoon AI)
-- 레이어 드릴다운·인터페이스 카드 구조 — [robintech-seoul/agent-toolkit](https://github.com/robintech-seoul/agent-toolkit) `arch-explorer` (설계만 참고, 코드 미사용 — 라이선스 없음)
+- 인터페이스 카드 구조 (v2 의 레이어 드릴다운은 v3 에서 묶음 펼침으로 바꿨다) — [robintech-seoul/agent-toolkit](https://github.com/robintech-seoul/agent-toolkit) `arch-explorer` (설계만 참고, 코드 미사용 — 라이선스 없음)
 - 호출 그래프 — [graft](https://github.com/trailhq/Graft) (MIT)
 - 설계 문서 — `docs/superpowers/specs/2026-10-02-eli5-v3-readable-map-design.md` (v2: `2026-10-01-eli5-graft-chat-design.md`)
