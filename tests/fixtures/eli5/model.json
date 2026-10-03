@@ -28,16 +28,16 @@
          "row": 2, "col": 0, "paths": []}
       ],
       "edges": [
-        {"from": "api", "to": "core", "label": "작업 실행", "iface": "run_job", "grade": "graft",
+        {"from": "api", "to": "engine", "label": "작업 실행", "iface": "run_job", "grade": "graft",
          "evidence": {"from_sym": "src/api/server.py#handle", "to_sym": "src/core/engine.py#run_job"}},
-        {"from": "core", "to": "agent", "label": "작업 전달", "iface": "agent-http", "grade": "code", "kind": "branch", "when": "작업을 마치면", "when_evidence": {"ref": "src/core/engine.py:5", "quote": "requests.post("},
+        {"from": "engine", "to": "agent", "label": "작업 전달", "iface": "agent-http", "grade": "code", "kind": "branch", "when": "작업을 마치면", "when_evidence": {"ref": "src/core/engine.py:5", "quote": "requests.post("},
          "evidence": {"ref": "src/core/engine.py:5", "quote": "requests.post"}},
         {"from": "agent", "to": "api", "label": "결과 콜백?", "grade": "unknown", "evidence": {}}
       ],
       "ifaces": [
-        {"id": "run_job", "title": "작업 실행", "from": "api", "to": "core", "transport": "python call",
+        {"id": "run_job", "title": "작업 실행", "from": "api", "to": "engine", "transport": "python call",
          "items": [{"sig": "run_job(job_id)", "desc": "작업 하나를 실행한다", "ref": "src/core/engine.py:4"}]},
-        {"id": "agent-http", "title": "에이전트 호출", "from": "core", "to": "agent", "transport": "http",
+        {"id": "agent-http", "title": "에이전트 호출", "from": "engine", "to": "agent", "transport": "http",
          "items": [{"sig": "POST http://agent/run", "desc": "작업 id 전달", "ref": "src/core/engine.py:5"}]}
       ]
     }

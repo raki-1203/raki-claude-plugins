@@ -87,7 +87,10 @@ integrity 'm["views"]["L0"]["nodes"][4]["col"]=5' "열은 0~4" "열 5개 상한"
 integrity 'm["views"]["L0"]["nodes"][4].update(row=0, col=2)' "지난다" "화살표 관통"
 integrity 'm["views"]["L0"]["nodes"][4].update(row=1, col=1); m["views"]["L0"]["nodes"][3].update(row=2, col=1)' "테두리 안에" "묶음 테두리 침범"
 integrity 'm["views"]["L0"]["edges"][0]["label"]="작업을 실행해 달라"' "칸, 상한 14" "edge label 14칸"
-fresh; run >/dev/null; [ "$(grade '.views.L0.edges[0].grade')" = "graft" ] && pass "묶음 끝 화살표 graft 유지 (안쪽 paths 합)" || fail "묶음 graft" "$(grade '.validation.downgrades')"
+fresh; edit 'm["views"]["L0"]["edges"][0]["to"]="core"; m["views"]["L0"]["nodes"][3]["paths"]=["src/core/engine.py"]'
+run >/dev/null; [ "$(grade '.views.L0.edges[0].grade')" = "graft" ] && pass "묶음 끝 화살표 graft 유지 (안쪽 paths 합 — 어느 박스인지 가릴 수 없을 때)" || fail "묶음 graft" "$(grade '.validation.downgrades')"
+integrity 'm["views"]["L0"]["edges"][0]["to"]="core"' "묶음 대신" "묶음 끝 근거가 안쪽 박스 하나면 거부 (graft to)"
+integrity 'm["views"]["L0"]["edges"][1]["from"]="core"' "묶음 대신" "묶음 끝 근거가 안쪽 박스 하나면 거부 (code ref from)"
 fresh; edit 'm["views"]["L0"]["nodes"][0]["detail"]="handle(req) 가 run_job 을 부른다"'
 out=$(run); [ $? -eq 0 ] && pass "detail 은 쉬운 말 검사 대상 아님" || fail "detail 검사 제외" "$out"
 
@@ -106,8 +109,8 @@ integrity 'm["scenarios"][0]["steps"][1]["body"]="run_job 을 부른다"' "run_j
 integrity 'm["scenarios"][0]["steps"][1]["substeps"][0]["label"]="작업 번호를 확인한다"' "상한 14" "하위 단계 길이"
 integrity 'm["scenarios"]=[]' "1~4개" "시나리오 0개"
 integrity 'm["scenarios"][0]["steps"]=[{"box":"core","title":"엔진","body":"엔진"},{"box":"engine","title":"실행기","body":"실행"}]' "가는 화살표가 없다" "묶음→자기 안쪽 단계는 화살표 아님"
-fresh; edit 'm["scenarios"][0]["steps"].insert(2, {"box":"init","title":"입구","body":"입구"}); m["scenarios"][0]["steps"][3]["box"]="agent"'
-out=$(run); [ $? -eq 0 ] && [ "$(echo "$out" | jq -r '.scenarios.run[3].edge')" = "1" ] && pass "지나온 박스 중 하나에서 이어지면 통과 (나무 모양)" || fail "나무 모양 잇기" "$out"
+fresh; edit 'm["views"]["L0"]["edges"].append({"from":"api","to":"init","label":"입구 확인","grade":"unknown","evidence":{}}); m["scenarios"][0]["steps"].append({"box":"init","title":"입구","body":"입구"})'
+out=$(run); [ $? -eq 0 ] && [ "$(echo "$out" | jq -r '.scenarios.run[3].edge')" = "3" ] && pass "지나온 박스 중 하나에서 이어지면 통과 (나무 모양 — agent 뒤에 api 에서 init)" || fail "나무 모양 잇기" "$out"
 fresh; edit 'del m["scenarios"]'; run >/dev/null; [ $? -eq 0 ] && pass "시나리오 없는 모델 통과" || fail "시나리오 없음"
 echo "🔧 갈림길"
 fresh; out=$(run); [ "$(echo "$out" | jq -c .branches)" = '{"1":"code"}' ] && pass "갈림길 조건 근거 판정 기록" || fail "갈림길 기록" "$(echo "$out" | jq -c .branches)"

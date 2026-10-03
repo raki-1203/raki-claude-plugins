@@ -44,6 +44,7 @@ ul{margin:0 0 12px;padding-left:18px}
 .edge.path text{fill:var(--accent);font-weight:600}
 .edge.hl path{stroke:var(--record);stroke-width:4;stroke-dasharray:none}.edge.hl text{fill:var(--record)}.edge.dim.hl{opacity:1}
 .forkmark{fill:var(--record);font-size:12px}
+.fdot{fill:currentColor;stroke:var(--box);stroke-width:1.5}
 .fork{margin:10px 0 2px;padding:8px 10px;border:1px dashed var(--record);border-radius:8px;font-size:13px}
 .fork .br{margin:5px 0}.fork .br.on{font-weight:600}
 .node.off,.frame.off{opacity:.25}
@@ -238,12 +239,14 @@ const MODEL = /*__ELI5_MODEL__*/null;
       const g = el("g", {class: "edge" + (R ? (!R.has(e.from) && !R.has(e.to) ? " dim" : "") : S ? (pathE.has(i) ? " path" : " dim") : ""), "data-i": i}, svg);
       el("path", {d: `M${x1},${y1} L${x2},${y2}`, class: "g-" + g2, "marker-end": `url(#ah-${g2})`}, g);
       if (e.kind === "branch") g.lastChild.setAttribute("marker-start", `url(#fk-${g2})`);
+      // 묶음 테두리에서 나가는 화살표 — 출발점에 점을 찍어 "묶음 전체에서" 임을 보인다
+      if (LAY.frames[e.from]) el("circle", {cx: x1, cy: y1, r: 4, class: "fdot g-" + g2}, g);
       if (e.label) {
         const t = el("text", {x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 4, "text-anchor": "middle", class: "g-" + g2}, g);
         t.textContent = e.label;
         try { const bb = t.getBBox(); g.insertBefore(el("rect", {x: bb.x - 3, y: bb.y - 1, width: bb.width + 6, height: bb.height + 2, class: "lbl-bg"}), t); } catch (_) {}
       }
-      el("title", {}, g).textContent = (e.when ? "조건: " + e.when + "\n" : "") + GRADE[e.grade] + (evText(e.evidence) ? " — " + evText(e.evidence) : "");
+      el("title", {}, g).textContent = (LAY.frames[e.from] ? NODE[e.from].title + " 전체에서\n" : "") + (LAY.frames[e.to] ? NODE[e.to].title + " 전체로\n" : "") + (e.when ? "조건: " + e.when + "\n" : "") + GRADE[e.grade] + (evText(e.evidence) ? " — " + evText(e.evidence) : "");
       if (e.iface) { g.style.cursor = "pointer"; g.addEventListener("click", () => flash(state.view, e.iface)); }
     });
     for (const n of V.nodes || []) {

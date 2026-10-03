@@ -283,6 +283,44 @@ def branch_report(model, root, quick):
     return out
 
 
+def frame_edge_errors(model):
+    """묶음 끝 화살표의 근거가 안쪽 박스 하나에 있으면 그 박스에서 잇는다 — 출발점이 묶음 테두리로 흐려지지 않게.
+
+    근거 경로를 안쪽 박스 paths 중 가장 길게 일치하는 박스에 배정한다. 같은 길이로 여러 박스가 겹치면 가릴 수 없으니 묶음을 허용한다.
+    """
+    errs = []
+    for vid, v in (model.get("views") or {}).items():
+        nodes = {n["id"]: n for n in v.get("nodes", [])}
+        kids = layout.children(v)
+
+        def owner(path, fid):
+            best, tie, blen = None, False, -1
+            for c in kids.get(fid, []):
+                for pre in nodes[c].get("paths") or []:
+                    pre = pre.rstrip("/")
+                    if path == pre or path.startswith(pre + "/"):
+                        if len(pre) > blen:
+                            best, tie, blen = c, False, len(pre)
+                        elif len(pre) == blen and c != best:
+                            tie = True
+            return None if tie else best
+
+        for e in v.get("edges", []):
+            ev = e.get("evidence") or {}
+            sides = []
+            if e.get("from") in kids:
+                path = (ev.get("from_sym") or "").split("#")[0] or (parse_ref(ev.get("ref"))[0] or "")
+                sides.append(("출발", e["from"], path))
+            if e.get("to") in kids and ev.get("to_sym"):
+                sides.append(("도착", e["to"], ev["to_sym"].split("#")[0]))
+            for side, fid, path in sides:
+                c = owner(path, fid) if path else None
+                if c:
+                    errs.append(f"{vid}: {e['from']}→{e['to']} 의 {side} 근거({path})가 '{nodes[fid].get('title')}' 묶음 안 "
+                                f"'{nodes[c].get('title')}' 박스에 있다 — 묶음 대신 \"{c}\" 에서 잇는다 (묶음 전체의 관계면 그걸 보여 주는 근거로)")
+    return errs
+
+
 def under(path, prefixes):
     for p in prefixes or []:
         p = p.rstrip("/")
@@ -434,7 +472,7 @@ def main():
     a = ap.parse_args()
     mp, root = Path(a.model), Path(a.root).resolve()
     model = json.loads(mp.read_text(encoding="utf-8"))
-    errs = integrity_errors(model) + v3_errors(model) + branch_errors(model)
+    errs = integrity_errors(model) + v3_errors(model) + branch_errors(model) + frame_edge_errors(model)
     if not errs:  # 시나리오는 지도가 맞을 때만 판정한다
         errs = scenario_errors(model)
     if errs:
