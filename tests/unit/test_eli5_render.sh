@@ -114,4 +114,8 @@ if command -v node >/dev/null 2>&1; then
     && pass "본문 이스케이프 — {{id}} 만 박스 버튼" || fail "본문 이스케이프" "$out"
 fi
 grep -q 'querySelector(".node.cur, .frame.cur")' "$TPL" && grep -q 'block: "nearest"' "$TPL" && pass "단계를 넘기면 현재 박스가 보이게 스크롤" || fail "현재 박스 스크롤"
+grep -q 'class="allsteps"' "$TPL" && grep -q 'class="now"' "$TPL" && pass "카드는 지금 단계 하나만 크게, 전체 단계는 접어서" || fail "지금 단계 카드"
+grep -q 'S.steps.slice(0, state.step + 1)' "$TPL" && grep -q 'rows.slice(1, state.step + 1)' "$TPL" && pass "지도는 지나온 단계까지만 번호·강조" || fail "지나온 길만"
+grep -q -- '--accent-soft' "$TPL" && grep -q '.node.cur rect.bg{fill:var(--accent-soft)' "$TPL" && pass "지금 단계 박스는 색을 채워 강조" || fail "지금 박스 강조"
+grep -q '<details id="rulesbox"' "$TPL" && pass "설계 규칙은 접어 둔다" || fail "규칙 접기"
 finish

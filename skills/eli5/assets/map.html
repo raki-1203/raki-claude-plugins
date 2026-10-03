@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__ELI5_TITLE__ — eli5</title>
 <style>
-:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--box:#ffffff;--accent:#0969da;--sel:#fff8c5;--edge:#8c959f;
+:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--box:#ffffff;--accent:#0969da;--accent-soft:#ddf4ff;--sel:#fff8c5;--edge:#8c959f;
   --graft:#1a7f37;--code:#0969da;--record:#9a6700;--unknown:#cf222e;
   --k-person:#8250df;--k-external:#6e7781;--k-service:#0969da;--k-module:#1a7f37;--k-store:#bc4c00;--k-job:#bf3989}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--sel:#3b2e00;--edge:#6e7681;
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--accent-soft:#0c2d6b;--sel:#3b2e00;--edge:#6e7681;
   --graft:#3fb950;--code:#4493f8;--record:#d29922;--unknown:#f85149;
   --k-person:#a371f7;--k-external:#8d96a0;--k-service:#4493f8;--k-module:#3fb950;--k-store:#f0883e;--k-job:#db61a2}}
-:root[data-theme="dark"]{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--sel:#3b2e00;--edge:#6e7681;
+:root[data-theme="dark"]{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--box:#161b22;--accent:#4493f8;--accent-soft:#0c2d6b;--sel:#3b2e00;--edge:#6e7681;
   --graft:#3fb950;--code:#4493f8;--record:#d29922;--unknown:#f85149;
   --k-person:#a371f7;--k-external:#8d96a0;--k-service:#4493f8;--k-module:#3fb950;--k-store:#f0883e;--k-job:#db61a2}
 *{box-sizing:border-box}
@@ -36,20 +36,25 @@ ul{margin:0 0 12px;padding-left:18px}
 .frame{cursor:pointer}
 .frame .fbg{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
 .frame.sel .fbg{stroke:var(--accent);stroke-width:2.5}
-.frame.cur .fbg{stroke:var(--accent);stroke-width:3}
+.frame.cur .fbg{fill:var(--accent-soft);stroke:var(--accent);stroke-width:3}
 .scbar{margin:10px 0 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
 .scbar button{border:1px solid var(--line);background:var(--box);color:var(--fg);border-radius:14px;padding:3px 12px;cursor:pointer;font:inherit}
 .scbar button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
 .edge.path path{stroke:var(--accent);stroke-width:3;stroke-dasharray:none}
 .edge.path text{fill:var(--accent);font-weight:600}
-.node.off,.frame.off{opacity:.35}
-.node.cur rect.bg{stroke:var(--accent);stroke-width:3}
+.node.off,.frame.off{opacity:.25}
+.node.cur rect.bg{fill:var(--accent-soft);stroke:var(--accent);stroke-width:3}
 .badge{cursor:pointer}.badge rect{fill:var(--accent)}.badge text{fill:#fff;font-size:11px;font-weight:700}
 .steps{list-style:none;padding:0;margin:8px 0}
 .step{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;cursor:pointer;background:var(--bg)}
 .step.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.now{border:2px solid var(--accent);border-radius:10px;padding:12px 14px;margin:8px 0;background:var(--accent-soft)}
+.side .now h3{font-size:17px;color:var(--fg);margin:2px 0 8px;font-weight:700;display:flex;align-items:center;gap:6px}.now p{margin:4px 0;font-size:14px}
+details.allsteps{margin-top:12px}details.allsteps summary{cursor:pointer;color:var(--muted);font-size:12px}
+details.allsteps .step{padding:4px 8px;font-size:13px}
+details#rulesbox{margin:2px 0 8px;font-size:13px}details#rulesbox summary{cursor:pointer;color:var(--muted)}
 .step p{margin:4px 0}
-.step .no{display:inline-block;min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:#fff;text-align:center;font-size:11px;line-height:20px;margin-right:6px}
+.no{display:inline-block;min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:#fff;text-align:center;font-size:11px;line-height:20px;margin-right:6px}
 .subs{font-size:12px;color:var(--muted)}
 .scnav{display:flex;gap:12px;align-items:center;margin:6px 0}
 button.link:disabled{color:var(--muted);cursor:default}
@@ -112,7 +117,7 @@ details#report h3{font-size:13px;margin:12px 0 4px}
 </header>
 <nav id="crumbs"></nav>
 <div class="hint" id="hint"></div>
-<ul id="rules"></ul>
+<details id="rulesbox"><summary id="rulessum"></summary><ul id="rules"></ul></details>
 <div class="layout">
   <div class="diagram"><svg id="svg" role="img" aria-label="구조 지도"></svg></div>
   <aside class="side" id="side"></aside>
@@ -201,9 +206,10 @@ const MODEL = /*__ELI5_MODEL__*/null;
       el("path", {d: "M0,0 L10,5 L0,10 z", class: "g-" + g, style: "fill:currentColor;stroke:none;stroke-dasharray:none"}, m);
     }
     const R = rel(state.node), S = !state.node && sc(), rows = S ? (SCV[S.id] || []) : [];
-    const pathE = new Set(rows.map(r => r.edge).filter(i => i !== null && i !== undefined));
+    // 한 번에 한 단계 — 지금까지 지나온 단계만 번호·강조를 켠다
+    const pathE = new Set(rows.slice(1, state.step + 1).map(r => r.edge).filter(i => i !== null && i !== undefined));
     const nums = {};
-    if (S) S.steps.forEach((st, i) => (nums[st.box] = nums[st.box] || []).push(i + 1));
+    if (S) S.steps.slice(0, state.step + 1).forEach((st, i) => (nums[st.box] = nums[st.box] || []).push(i + 1));
     const curBox = S ? S.steps[state.step].box : null;
     const inPath = id => !!nums[id] || (KIDS[id] || []).some(c => nums[c]) || !!(NODE[id] && NODE[id].group && nums[NODE[id].group]);
     for (const [fid, r] of Object.entries(LAY.frames)) {
@@ -252,19 +258,19 @@ const MODEL = /*__ELI5_MODEL__*/null;
     }
   }
   function scCard(S) {
-    const rows = SCV[S.id] || [], N = S.steps.length;
-    return `<div class="k">시나리오</div><h2>${rich(S.title)}</h2><p>${rich(S.summary || "")}</p>
-      <div class="scnav"><button class="link" type="button" data-step="${state.step - 1}" ${state.step ? "" : "disabled"}>← 이전</button>
-        <span>${state.step + 1} / ${N}</span>
-        <button class="link" type="button" data-step="${state.step + 1}" ${state.step < N - 1 ? "" : "disabled"}>다음 →</button></div>
-      <ol class="steps">${S.steps.map((st, i) => {
-        const row = rows[i] || {}, g = row.grade, e = row.edge;
-        const badge = g === "unknown" ? ` <span class="tag g-unknown">미확인</span>` : g === "record" ? ` <span class="tag g-record">기록 해석</span>` : "";
-        const ev = state.ev ? [e !== null && e !== undefined ? chip(evText(V.edges[e].evidence)) : "", ...(st.evidence || []).map(x => chip(x.ref))].join(" ") : "";
-        return `<li class="step${i === state.step ? " cur" : ""}" data-step="${i}"><b><span class="no">${i + 1}</span>${rich(st.title)}</b>${badge}
-          <p>${stepBody(st.body || "")}</p>${(st.substeps || []).length ? `<div class="subs">${st.substeps.map(x => esc(x.label)).join(" → ")}</div>` : ""}${ev}</li>`;
-      }).join("")}</ol>
-      <p class="detail">←/→ 키로 넘긴다. 파란 박스 이름을 누르면 그 박스 설명.</p>`;
+    const rows = SCV[S.id] || [], N = S.steps.length, i = state.step, st = S.steps[i];
+    const row = rows[i] || {}, g = row.grade, e = row.edge;
+    const badge = g === "unknown" ? ` <span class="tag g-unknown">미확인</span>` : g === "record" ? ` <span class="tag g-record">기록 해석</span>` : "";
+    const ev = state.ev ? [e !== null && e !== undefined ? chip(evText(V.edges[e].evidence)) : "", ...(st.evidence || []).map(x => chip(x.ref))].join(" ") : "";
+    return `<div class="k">시나리오</div><h2>${rich(S.title)}</h2><p class="detail">${rich(S.summary || "")}</p>
+      <div class="scnav"><button class="link" type="button" data-step="${i - 1}" ${i ? "" : "disabled"}>← 이전</button>
+        <span>${i + 1} / ${N}</span>
+        <button class="link" type="button" data-step="${i + 1}" ${i < N - 1 ? "" : "disabled"}>다음 →</button></div>
+      <div class="now"><h3><span class="no">${i + 1}</span>${rich(st.title)}${badge}</h3>
+        <p>${stepBody(st.body || "")}</p>${(st.substeps || []).length ? `<div class="subs">${st.substeps.map(x => esc(x.label)).join(" → ")}</div>` : ""}${ev}</div>
+      <p class="detail">${i < N - 1 ? "→ 키나 \"다음\"을 누르면 지도에 다음 박스가 켜진다." : "마지막 단계다. 위 버튼으로 다른 흐름을 골라 볼 수 있다."}</p>
+      <details class="allsteps"><summary>전체 단계 ${N}개 보기</summary><ol class="steps">${S.steps.map((x, k) =>
+        `<li class="step${k === i ? " cur" : ""}" data-step="${k}"><span class="no">${k + 1}</span>${rich(x.title)}</li>`).join("")}</ol></details>`;
   }
   function ifaceCard(f) {
     return `<div class="card" id="card-${esc(state.view)}-${esc(f.id)}">
@@ -312,6 +318,8 @@ const MODEL = /*__ELI5_MODEL__*/null;
   function lists() {
     const v = views[state.view], val = MODEL.validation || {};
     $("hint").innerHTML = rich(v.hint || "");
+    $("rulesbox").hidden = !(v.rules || []).length;
+    $("rulessum").textContent = `설계 규칙 ${(v.rules || []).length}개`;
     $("rules").innerHTML = (v.rules || []).map(r =>
       `<li>${rich(r.text)} <span class="tag g-${esc(r.grade)}">${GRADE[r.grade] || esc(r.grade)}</span> ${chip(evText(r.evidence))}</li>`).join("");
     $("unknowns").innerHTML = (MODEL.unknowns || []).map(u => `<li>${esc(u.text)} <span class="detail">— ${esc(u.why || "")}</span></li>`).join("") || "<li>없음</li>";
