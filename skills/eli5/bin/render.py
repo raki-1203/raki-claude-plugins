@@ -91,14 +91,19 @@ def render_track(model, mp, root, sid):
         except (OSError, ValueError):
             return default
 
-    tpath, ppath = mp.with_name(f"{stem}.touched.{sid}.json"), mp.with_name(f"{stem}.progress.{sid}.json")
+    tdir, ppath = mp.with_name(f"{stem}.touched.{sid}"), mp.with_name(f"{stem}.progress.{sid}.json")
+    touched = {}  # 훅이 파일마다 따로 남긴 기록을 모은다
+    for f in sorted(tdir.glob("*.json")) if tdir.is_dir() else []:
+        d = load(f, None)
+        if isinstance(d, dict) and d.get("path"):
+            touched[d["path"]] = {"box": d.get("box"), "at": d.get("at")}
     view = next(iter(model["views"].values()))
     prog = load(ppath, None)
     errs = progress_errors(prog, {n["id"] for n in view.get("nodes", [])}) if prog is not None else []
     live = (root / ".eli5" / "track" / f"{sid}.json").exists()
     at = (datetime.datetime.fromtimestamp(ppath.stat().st_mtime).astimezone().isoformat(timespec="seconds")
           if ppath.exists() else None)
-    track = {"session": sid, "live": live, "touched": (load(tpath, {}) or {}).get("files", {}),
+    track = {"session": sid, "live": live, "touched": touched,
              "progress": None if errs else prog, "errors": errs, "progress_at": at}
     html = build_html({**model, "layout": layout.compute(view), "track": track},
                       str((model.get("meta") or {}).get("target") or stem) + " — 진행")

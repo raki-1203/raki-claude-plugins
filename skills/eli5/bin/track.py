@@ -8,11 +8,14 @@
 세션 id 는 --session, 없으면 CLAUDE_CODE_SESSION_ID (훅 입력의 session_id 와 같다).
 touch 는 어떤 경우에도 exit 0 — 훅 실패가 편집을 막으면 안 된다. 오류는 .eli5/track/<sid>.log 에 남긴다.
 """
+import hashlib
 import json
 import os
+import re
 import sys
 
 TRACK = os.path.join(".eli5", "track")
+SID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")  # 세션 id 가 파일 이름에 들어간다 — 경로 문자를 막는다
 
 
 def _marker_for(path, sid):
@@ -34,7 +37,7 @@ def _stem(model):
 
 
 def _write(path, data):
-    tmp = path + ".tmp"
+    tmp = f"{path}.{os.getpid()}.tmp"  # 동시에 도는 훅끼리 임시 파일이 겹치지 않게
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
@@ -54,11 +57,16 @@ def box_for(rel, view):
     return best
 
 
-def _render(model, root, sid):
+def _render(model, root, sid, wait=False):
+    """추적 화면을 다시 그린다. 훅에서는 기다리지 않는다 — 편집을 막지 않고, 훅이 강제 종료돼도 고아가 남지 않게 따로 띄운다."""
     import subprocess
     here = os.path.dirname(os.path.abspath(__file__))
-    subprocess.run([sys.executable, os.path.join(here, "render.py"), model, "--root", root, "--track", sid],
-                   capture_output=True, timeout=30)
+    cmd = [sys.executable, os.path.join(here, "render.py"), model, "--root", root, "--track", sid]
+    if wait:
+        subprocess.run(cmd, capture_output=True, timeout=60)
+    else:
+        subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
 
 
 def touch(stdin_text, now):
@@ -69,7 +77,7 @@ def touch(stdin_text, now):
     sid = ev.get("session_id") or ""
     ti = ev.get("tool_input") or {}
     path = ti.get("file_path") or ti.get("notebook_path") or ""
-    if not sid or not path:
+    if not SID_RE.match(sid) or not path:
         return
     root, marker = _marker_for(path, sid)
     if not marker:
@@ -83,13 +91,11 @@ def touch(stdin_text, now):
             model = json.load(f)["model"]
         with open(model, encoding="utf-8") as f:
             view = next(iter(json.load(f)["views"].values()))
-        tpath = _stem(model) + ".touched." + sid + ".json"
-        data = {"files": {}}
-        if os.path.exists(tpath):
-            with open(tpath, encoding="utf-8") as f:
-                data = json.load(f)
-        data["files"][rel] = {"box": box_for(rel, view), "at": now}
-        _write(tpath, data)
+        # 파일마다 기록을 따로 둔다 — 한 파일을 읽고-고치고-쓰면 동시에 도는 훅끼리 서로 덮어쓴다(리뷰 실측 60건 중 45건 유실)
+        tdir = _stem(model) + ".touched." + sid
+        os.makedirs(tdir, exist_ok=True)
+        _write(os.path.join(tdir, hashlib.sha1(rel.encode("utf-8")).hexdigest()[:16] + ".json"),
+               {"path": rel, "box": box_for(rel, view), "at": now})
         _render(model, root, sid)
     except Exception as e:  # noqa: BLE001 — 훅은 절대 실패하지 않는다
         with open(log, "a", encoding="utf-8") as f:
@@ -114,8 +120,14 @@ def main(argv, now):
         p.add_argument("--session", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""))
     a = ap.parse_args(argv)
     if a.cmd == "touch":
-        touch(sys.stdin.read(), now)
+        try:  # 어떤 입력에도 exit 0 — 바이트로 읽어 UTF-8 이 아니어도 죽지 않는다
+            touch(sys.stdin.buffer.read().decode("utf-8", "replace"), now)
+        except Exception:  # noqa: BLE001
+            pass
         return 0
+    if a.session and not SID_RE.match(a.session):
+        print("세션 id 는 영문·숫자·_·- 만", file=sys.stderr)
+        return 2
     if not a.session:
         print("세션 id 가 없다 — --session 을 주거나 Claude Code 안에서 실행한다 (CLAUDE_CODE_SESSION_ID)", file=sys.stderr)
         return 2
@@ -127,7 +139,7 @@ def main(argv, now):
         _write(marker, {"model": model, "started_at": now})
     elif os.path.exists(marker):
         os.remove(marker)
-    _render(model, root, a.session)
+    _render(model, root, a.session, wait=True)
     print(f"{a.cmd}: {_stem(model)}.track.{a.session}.html")
     return 0
 
