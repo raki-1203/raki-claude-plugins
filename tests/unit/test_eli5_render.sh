@@ -84,4 +84,17 @@ if command -v node >/dev/null 2>&1; then
   out=$(node -e "$CL; console.log(codeList({code: ['src/a.py', 'src/s/'], paths: ['src/api/', 'src/s/']}).join('|') + '#' + codeList({}).length)")
   [ "$out" = "src/a.py|src/s/|src/api/#0" ] && pass "C: 들어 있는 코드 중복 제거" || fail "C: 중복 제거" "$out"
 fi
+python3 - "$H" "$M" <<'PY' && pass "payload 에 배치(layout), 저장 모델에는 없음" || fail "payload layout"
+import json, re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+model = json.loads(re.search(r"const MODEL = (.*?);\n\(function", h, re.S).group(1))
+L = model["layout"]
+assert set(L["boxes"]) == {"api", "engine", "init", "agent"} and set(L["frames"]) == {"core"}, L
+assert len(L["edges"]) == 3 and L["size"][0] > 0
+assert "layout" not in json.load(open(sys.argv[2], encoding="utf-8"))
+PY
+! grep -q '안으로' "$TPL" && ! grep -q 'data-go' "$TPL" && pass "층 이동 UI 없음" || fail "층 이동 UI 잔존"
+grep -q 'MODEL.layout' "$TPL" && grep -q 'class: "frame' "$TPL" && grep -q 'data-sel' "$TPL" && ! grep -q 'function box(' "$TPL" \
+  && pass "지도는 MODEL.layout 으로 그리고 묶음·안쪽 박스 버튼이 있다" || fail "layout 그리기"
+grep -q '속한 묶음' "$TPL" && grep -q 'data-sel="${esc(n.group)}"' "$TPL" && pass "안쪽 박스 카드에 속한 묶음 링크" || fail "속한 묶음 링크"
 finish

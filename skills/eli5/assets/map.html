@@ -16,7 +16,7 @@
   --k-person:#a371f7;--k-external:#8d96a0;--k-service:#4493f8;--k-module:#3fb950;--k-store:#f0883e;--k-job:#db61a2}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
-main{max-width:1320px;margin:0 auto;padding:16px}
+main{max-width:1600px;margin:0 auto;padding:16px}
 h1{font-size:20px;margin:0 0 4px}
 .summary{margin:0 0 10px;font-size:15px}
 .meta-row{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12px;color:var(--muted)}
@@ -32,6 +32,12 @@ nav{margin:12px 0 4px;font-size:13px} nav a{color:var(--accent);cursor:pointer}
 .hint{color:var(--muted);margin:2px 0 8px}
 ul{margin:0 0 12px;padding-left:18px}
 .diagram{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--box)}
+#svg{display:block;max-width:100%;height:auto}
+.frame{cursor:pointer}
+.frame .fbg{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+.frame.sel .fbg{stroke:var(--accent);stroke-width:2.5}
+.frame .title{font-weight:600;font-size:13px}
+.frame .sub{fill:var(--muted);font-size:11px}
 /* 박스를 누를 때만 오른쪽에서 겹쳐 나오는 카드 — 지도는 항상 전체 폭을 쓴다 */
 aside.side{position:fixed;top:0;right:0;width:min(400px,100vw);height:100vh;overflow:auto;z-index:10;background:var(--box);border-left:1px solid var(--line);padding:16px 18px;box-shadow:-8px 0 24px rgba(0,0,0,.25);transform:translateX(100%);visibility:hidden;transition:transform .2s ease,visibility .2s}
 aside.side.open{transform:none;visibility:visible}
@@ -41,11 +47,9 @@ details.code{margin-top:14px}details.code summary{cursor:pointer;color:var(--mut
 svg text{fill:var(--fg);font-size:12px}
 .node{cursor:pointer}
 .node rect.bg{fill:var(--box);stroke:var(--line);stroke-width:1.5}
-.node.drill rect.bg{stroke:var(--fg);stroke-width:2.5}
 .node.sel rect.bg{fill:var(--sel)}
 .node .title{font-weight:600;font-size:13px}
 .node .sub{fill:var(--muted);font-size:11px}
-.node .go{fill:var(--accent);font-size:11px}
 .k-person{fill:var(--k-person)}.k-external{fill:var(--k-external)}.k-service{fill:var(--k-service)}
 .k-module{fill:var(--k-module)}.k-store{fill:var(--k-store)}.k-job{fill:var(--k-job)}
 .edge path{fill:none;stroke-width:1.8}
@@ -103,14 +107,19 @@ details#report h3{font-size:13px;margin:12px 0 4px}
 <script>
 const MODEL = /*__ELI5_MODEL__*/null;
 (function () {
-  const W = 200, H = 72, GX = 90, GY = 60, PAD = 30, NS = "http://www.w3.org/2000/svg";
-  let gx = GX;  // 열 간격 — view 마다 가장 긴 화살표 라벨이 박스 사이에 들어가도록 넓힌다
+  const NS = "http://www.w3.org/2000/svg";
   const GRADE = {graft: "graft 증명", code: "코드 읽음", record: "기록 해석", unknown: "미확인", n: "근거 숨김"};
   const KIND = {person: "사람", external: "외부 시스템", service: "서비스", module: "내부 모듈", store: "저장소", job: "작업"};
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
   const views = MODEL.views, meta = MODEL.meta || {}, gloss = meta.glossary || {};
   const rootView = Object.keys(views).find(k => !views[k].parent) || Object.keys(views)[0];
+  // 배치는 render.py 가 layout.py 로 계산해 넣는다 — 여기서는 그리기만 한다 (검증기의 관통 검사와 같은 숫자)
+  const V = views[rootView], LAY = MODEL.layout || {boxes: {}, frames: {}, edges: [], size: [0, 0]};
+  const NODE = Object.fromEntries((V.nodes || []).map(n => [n.id, n]));
+  const KIDS = {};
+  for (const n of V.nodes || []) if (n.group && NODE[n.group]) (KIDS[n.group] = KIDS[n.group] || []).push(n.id);
+  const rel = id => id ? new Set([id, ...(KIDS[id] || []), ...(NODE[id] && NODE[id].group ? [NODE[id].group] : [])]) : null;
   const state = {view: null, node: null, ev: false};
 
   // 용어 풀이 — 긴 용어부터, ASCII 경계 검사 (deadhd linkify 방식)
@@ -129,16 +138,6 @@ const MODEL = /*__ELI5_MODEL__*/null;
     for (const k in attrs) e.setAttribute(k, attrs[k]);
     if (parent) parent.appendChild(e);
     return e;
-  }
-  function box(n) {
-    const span = n.span || 1;
-    return {x: PAD + (n.col || 0) * (W + gx), y: PAD + (n.row || 0) * (H + GY), w: span * W + (span - 1) * gx, h: H};
-  }
-  function clip(b, tx, ty) {
-    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, dx = tx - cx, dy = ty - cy;
-    if (!dx && !dy) return [cx, cy];
-    const s = Math.min(Math.abs(b.w / 2 / (dx || 1e-9)), Math.abs(b.h / 2 / (dy || 1e-9)));
-    return [cx + dx * s, cy + dy * s];
   }
   function evText(ev) {
     if (!ev) return "";
@@ -169,34 +168,31 @@ const MODEL = /*__ELI5_MODEL__*/null;
     $("crumbs").querySelectorAll("a").forEach(a => a.onclick = () => go(a.dataset.v));
   }
   function draw() {
-    const v = views[state.view], svg = $("svg");
+    const svg = $("svg"), [sw, sh] = LAY.size;
     svg.innerHTML = "";
-    gx = GX;
-    for (const e of v.edges || []) {
-      if (!e.label) continue;
-      const m = el("text", {}, svg);
-      m.textContent = e.label;
-      try { gx = Math.max(gx, m.getBBox().width + 24); } catch (_) {}
-      m.remove();
-    }
-    const nodes = Object.fromEntries((v.nodes || []).map(n => [n.id, n]));
-    let mx = 0, my = 0;
-    for (const n of v.nodes || []) { const b = box(n); mx = Math.max(mx, b.x + b.w); my = Math.max(my, b.y + b.h); }
-    svg.setAttribute("viewBox", `0 0 ${mx + PAD} ${my + PAD}`);
-    svg.setAttribute("width", mx + PAD);
-    svg.setAttribute("height", my + PAD);
+    svg.setAttribute("viewBox", `0 0 ${sw} ${sh}`);
+    svg.setAttribute("width", sw);
+    svg.setAttribute("height", sh);
     const defs = el("defs", {}, svg);
     for (const g of Object.keys(GRADE)) {
       const m = el("marker", {id: "ah-" + g, viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse"}, defs);
       el("path", {d: "M0,0 L10,5 L0,10 z", class: "g-" + g, style: "fill:currentColor;stroke:none;stroke-dasharray:none"}, m);
     }
-    for (const e of v.edges || []) {
-      const a = nodes[e.from], b = nodes[e.to];
-      if (!a || !b) continue;
-      const A = box(a), B = box(b), g2 = shown(e);
-      const [x1, y1] = clip(A, B.x + B.w / 2, B.y + B.h / 2), [x2, y2] = clip(B, A.x + A.w / 2, A.y + A.h / 2);
-      const dim = state.node && e.from !== state.node && e.to !== state.node;
-      const g = el("g", {class: "edge" + (dim ? " dim" : "")}, svg);
+    for (const [fid, r] of Object.entries(LAY.frames)) {
+      const n = NODE[fid], g = el("g", {class: "frame" + (state.node === fid ? " sel" : "")}, svg);
+      el("rect", {x: r[0], y: r[1], width: r[2], height: r[3], rx: 10, class: "fbg"}, g);
+      el("circle", {cx: r[0] + 16, cy: r[1] + 17, r: 5, class: "k-" + (n.kind || "module")}, g);
+      el("text", {x: r[0] + 28, y: r[1] + 22, class: "title"}, g).textContent = n.title;
+      el("text", {x: r[0] + 14, y: r[1] + 38, class: "sub"}, g).textContent = n.say || "";
+      el("title", {}, g).textContent = (KIND[n.kind] || "") + " 묶음 — 빈 곳을 누르면 설명";
+      g.addEventListener("click", () => select(state.node === fid ? null : fid));
+    }
+    const R = rel(state.node);
+    (V.edges || []).forEach((e, i) => {
+      const s = LAY.edges[i];
+      if (!s) return;
+      const [x1, y1, x2, y2] = s, g2 = shown(e);
+      const g = el("g", {class: "edge" + (R && !R.has(e.from) && !R.has(e.to) ? " dim" : "")}, svg);
       el("path", {d: `M${x1},${y1} L${x2},${y2}`, class: "g-" + g2, "marker-end": `url(#ah-${g2})`}, g);
       if (e.label) {
         const t = el("text", {x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 4, "text-anchor": "middle", class: "g-" + g2}, g);
@@ -205,21 +201,17 @@ const MODEL = /*__ELI5_MODEL__*/null;
       }
       el("title", {}, g).textContent = GRADE[e.grade] + (evText(e.evidence) ? " — " + evText(e.evidence) : "");
       if (e.iface) { g.style.cursor = "pointer"; g.addEventListener("click", () => flash(state.view, e.iface)); }
-    }
-    for (const n of v.nodes || []) {
-      const B = box(n);
-      const g = el("g", {class: "node" + (n.drill ? " drill" : "") + (state.node === n.id ? " sel" : "")}, svg);
-      el("rect", {x: B.x, y: B.y, width: B.w, height: B.h, rx: 6, class: "bg"}, g);
-      el("rect", {x: B.x + 1, y: B.y + 1, width: 5, height: B.h - 2, rx: 2, class: "k-" + (n.kind || "module")}, g);
-      el("text", {x: B.x + 16, y: B.y + 27, class: "title"}, g).textContent = n.title;
-      el("text", {x: B.x + 16, y: B.y + 47, class: "sub"}, g).textContent = n.say || "";
+    });
+    for (const n of V.nodes || []) {
+      const B = LAY.boxes[n.id];
+      if (!B) continue;
+      const g = el("g", {class: "node" + (state.node === n.id ? " sel" : "")}, svg);
+      el("rect", {x: B[0], y: B[1], width: B[2], height: B[3], rx: 6, class: "bg"}, g);
+      el("rect", {x: B[0] + 1, y: B[1] + 1, width: 5, height: B[3] - 2, rx: 2, class: "k-" + (n.kind || "module")}, g);
+      el("text", {x: B[0] + 16, y: B[1] + 27, class: "title"}, g).textContent = n.title;
+      el("text", {x: B[0] + 16, y: B[1] + 47, class: "sub"}, g).textContent = n.say || "";
       const terms = termsIn(n.title, n.say);
       el("title", {}, g).textContent = (KIND[n.kind] || "") + terms.map(t => `\n${t}: ${gloss[t]}`).join("");
-      if (n.drill) {
-        const d = el("text", {x: B.x + B.w - 10, y: B.y + B.h - 8, "text-anchor": "end", class: "go"}, g);
-        d.textContent = "안으로 ▸";
-        d.addEventListener("click", ev => { ev.stopPropagation(); go(n.drill); });
-      }
       g.addEventListener("click", () => select(state.node === n.id ? null : n.id));
     }
   }
@@ -231,19 +223,21 @@ const MODEL = /*__ELI5_MODEL__*/null;
   }
   function side() {
     const v = views[state.view], n = state.node && (v.nodes || []).find(x => x.id === state.node);
+    const mine = n ? new Set([n.id, ...(KIDS[n.id] || [])]) : null;
     $("side").classList.toggle("open", !!n);
     if (!n) { $("side").innerHTML = ""; return; }
-    const conns = (v.edges || []).filter(e => e.from === n.id || e.to === n.id).map(e => {
-      const out = e.from === n.id, other = nodeTitle(state.view, out ? e.to : e.from);
+    const conns = (v.edges || []).filter(e => mine.has(e.from) || mine.has(e.to)).map(e => {
+      const out = mine.has(e.from), other = nodeTitle(state.view, out ? e.to : e.from);
       const grade = (state.ev || e.grade === "unknown") ? ` <span class="tag g-${esc(e.grade)}">${GRADE[e.grade]}</span>` : "";
       return `<div class="conn">${out ? "→" : "←"} ${esc(other)} — ${esc(e.label || "")}${grade}${state.ev ? " " + chip(evText(e.evidence)) : ""}</div>`;
     }).join("");
     const code = codeList(n);
-    const ifs = (v.ifaces || []).filter(f => f.from === n.id || f.to === n.id);
+    const ifs = (v.ifaces || []).filter(f => mine.has(f.from) || mine.has(f.to));
     const terms = termsIn(n.title, n.say, n.detail);
     $("side").innerHTML = `<div class="k"><i style="background:var(--k-${esc(n.kind)})"></i>${KIND[n.kind] || ""}</div>
       <h2>${rich(n.title)}</h2><p>${rich(n.say || "")}</p>${n.detail ? `<p class="detail">${rich(n.detail)}</p>` : ""}
-      ${n.drill ? `<p><button class="link" type="button" data-go="${esc(n.drill)}">안으로 들어가기 ▸</button></p>` : ""}
+      ${n.group && NODE[n.group] ? `<p class="detail">속한 묶음: <button class="link" type="button" data-sel="${esc(n.group)}">${esc(NODE[n.group].title)}</button> — 묶음의 연결은 묶음 카드에</p>` : ""}
+      ${KIDS[n.id] ? `<h3>안쪽 박스</h3>${KIDS[n.id].map(c => `<div class="conn"><button class="link" type="button" data-sel="${esc(c)}">${esc(NODE[c].title)}</button> — ${esc(NODE[c].say || "")}</div>`).join("")}` : ""}
       ${conns ? `<h3>연결</h3>${conns}` : ""}
       ${terms.length ? `<h3>용어</h3>${terms.map(t => `<div><b>${esc(t)}</b> — ${esc(gloss[t])}</div>`).join("")}` : ""}
       ${code.length || ifs.length ? `<details class="code"><summary>코드 자세히</summary>
@@ -252,9 +246,9 @@ const MODEL = /*__ELI5_MODEL__*/null;
       <p><button class="link" type="button" data-close>닫기</button></p>`;
   }
   $("side").addEventListener("click", ev => {
-    const t = ev.target.closest && ev.target.closest("[data-copy],[data-go],[data-close]");
+    const t = ev.target.closest && ev.target.closest("[data-copy],[data-sel],[data-close]");
     if (!t) return;
-    if (t.dataset.go) return go(t.dataset.go);
+    if (t.dataset.sel) return select(t.dataset.sel);
     if (t.hasAttribute("data-close")) return select(null);
     const text = t.dataset.copy, label = t.textContent;
     try { navigator.clipboard.writeText(text); } catch (_) {}

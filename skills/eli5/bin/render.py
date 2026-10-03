@@ -14,6 +14,8 @@ import tempfile
 from pathlib import Path
 
 TEMPLATE = Path(__file__).resolve().parent.parent / "assets" / "map.html"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import layout  # noqa: E402
 
 
 def git(root, *args):
@@ -60,8 +62,10 @@ def main():
     meta["built_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     scope = meta.get("scope") or ["."]
     dirty = bool(git(root, "status", "--porcelain", "--", *scope))
+    # 배치는 그릴 때만 필요하다 — 저장 모델에는 넣지 않고 HTML payload 에만 싣는다
+    shown = {**model, "layout": layout.compute(next(iter(model["views"].values())))}
     # 데이터 안의 문자열이 script 블록을 닫거나(</) HTML 주석을 열지(<!--) 못하게 한다. 둘 다 JS 문자열 이스케이프라 값은 그대로다.
-    payload = json.dumps(model, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
+    payload = json.dumps(shown, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
     title = str(meta.get("target") or stem_of(mp)).replace("&", "&amp;").replace("<", "&lt;")
     html = TEMPLATE.read_text(encoding="utf-8")
     html = html.replace("/*__ELI5_MODEL__*/null", payload, 1).replace("__ELI5_TITLE__", title, 1)
