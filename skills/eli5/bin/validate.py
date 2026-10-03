@@ -144,6 +144,110 @@ def effective_nodes(view):
             for nid, n in nodes.items()}
 
 
+TOKEN_RE = re.compile(r"\{\{([^{}]+)\}\}")
+
+
+def _ends(i, nodes, kids):
+    """박스 i 에 닿는 화살표 끝 — 자기, 안쪽 박스(묶음이면), 바깥 묶음(안쪽 박스면)."""
+    n = nodes.get(i, {})
+    return {i, *kids.get(i, []), *([n["group"]] if n.get("group") else [])}
+
+
+def scenario_links(view, steps):
+    """단계마다 쓰인 화살표 번호 — 지금까지 지나온 박스(최근 우선)에서 나오는 화살표. 첫 단계·못 찾으면 None."""
+    nodes = {n["id"]: n for n in view.get("nodes", [])}
+    kids = layout.children(view)
+    edges = view.get("edges", [])
+    out, seen = [], []
+    for st in steps:
+        hit = None
+        for prev in reversed(seen):
+            hit = next((i for i, e in enumerate(edges)
+                        if e["from"] in _ends(prev, nodes, kids) and e["to"] in _ends(st.get("box"), nodes, kids)), None)
+            if hit is not None:
+                break
+        out.append(hit)
+        seen.append(st.get("box"))
+    return out
+
+
+def scenario_errors(model):
+    """시나리오 — 단계는 지도 위 실제 화살표를 따라가야 한다 (archify mainPath 방식을 나무 모양으로 넓힘)."""
+    scs = model.get("scenarios")
+    if scs is None:
+        return []
+    if not isinstance(scs, list) or not 1 <= len(scs) <= 4:
+        return ["scenarios 는 1~4개 — 지도에서 가장 중요한 흐름만 고른다"]
+    g = (model.get("meta") or {}).get("glossary") or {}
+    view = next(iter(model["views"].values()))
+    nodes = {n["id"]: n for n in view.get("nodes", [])}
+    kids = layout.children(view)
+    errs, ids = [], set()
+    for sc in scs:
+        sid = sc.get("id")
+        w = f"scenarios[{sid}]"
+        if not sid or sid in ids:
+            errs.append(f"{w}: id 가 비었거나 겹친다 — 시나리오마다 다른 영문 id")
+        ids.add(sid)
+        for f, limit in (("title", plain.TITLE_MAX), ("summary", None)):
+            t = sc.get(f)
+            if not isinstance(t, str) or not t.strip():
+                errs.append(f"{w}.{f} 가 비었다 — 쉬운 말로 쓴다")
+            else:
+                errs += plain.check_plain(f"{w}.{f}", t, g, limit)
+        steps = sc.get("steps") or []
+        if not 2 <= len(steps) <= 7:
+            errs.append(f"{w}: 단계가 {len(steps)}개 — 2~7개로 묶는다 (비개발자가 이해할 단위)")
+            continue
+        missing = False
+        for k, st in enumerate(steps):
+            ws = f"{w}.steps[{k}]"
+            if st.get("box") not in nodes:
+                errs.append(f"{ws}: 박스 '{st.get('box')}' 없음 — 있는 id: {', '.join(sorted(nodes))}")
+                missing = True
+            for f, limit in (("title", plain.TITLE_MAX), ("body", None)):
+                t = st.get(f)
+                if not isinstance(t, str) or not t.strip():
+                    errs.append(f"{ws}.{f} 가 비었다 — 쉬운 말로 쓴다")
+                else:
+                    errs += plain.check_plain(f"{ws}.{f}", TOKEN_RE.sub("", t), g, limit)
+            for j, sub in enumerate(st.get("substeps") or []):
+                errs += plain.check_plain(f"{ws}.substeps[{j}]", sub.get("label") or "", g, plain.LABEL_MAX)
+            for tok in TOKEN_RE.findall(st.get("body") or ""):
+                if tok not in nodes:
+                    errs.append(f"{ws}.body 의 {{{{{tok}}}}} — 있는 박스 id 를 쓴다")
+        if missing:
+            continue
+        links = scenario_links(view, steps)
+        for k in range(1, len(steps)):
+            if links[k] is None:
+                a, b = steps[k - 1]["box"], steps[k]["box"]
+                rev = any(e["from"] in _ends(b, nodes, kids) and e["to"] in _ends(a, nodes, kids) for e in view.get("edges", []))
+                how = f"반대 방향({b}→{a})만 있다. 순서를 바꾸거나 지도를 고친다" if rev else "지나온 박스에서 오는 화살표를 지도에 그리거나 단계를 고친다"
+                errs.append(f"{w}.steps[{k}]: 지나온 박스에서 '{b}' 로 가는 화살표가 없다 — {how}")
+    return errs
+
+
+def scenario_report(model, root, quick):
+    """{시나리오 id: [{"edge": 번호|None, "grade": 등급|None}]} — 화살표 등급을 물려받고, 단계 근거가 틀리면 unknown."""
+    view = next(iter(model["views"].values()))
+    edges = view.get("edges", [])
+    out = {}
+    for sc in model.get("scenarios") or []:
+        rows = []
+        for st, hit in zip(sc["steps"], scenario_links(view, sc["steps"])):
+            grade = edges[hit]["grade"] if hit is not None else None
+            for ev in st.get("evidence") or []:
+                ok, _ = check_code(ev, root, quick)
+                if not ok:
+                    grade = "unknown"
+                elif grade is None:
+                    grade = "code"
+            rows.append({"edge": hit, "grade": grade})
+        out[sc["id"]] = rows
+    return out
+
+
 def under(path, prefixes):
     for p in prefixes or []:
         p = p.rstrip("/")
@@ -296,6 +400,8 @@ def main():
     mp, root = Path(a.model), Path(a.root).resolve()
     model = json.loads(mp.read_text(encoding="utf-8"))
     errs = integrity_errors(model) + v3_errors(model)
+    if not errs:  # 시나리오는 지도가 맞을 때만 판정한다
+        errs = scenario_errors(model)
     if errs:
         print(json.dumps({"integrity_errors": errs}, ensure_ascii=False, indent=2))
         return 1
@@ -332,7 +438,7 @@ def main():
     missing, skipped = missing_edges(model, root)
     report = {"counts": counts, "downgrades": downgrades, "integrity_errors": [],
               "missing_edges": missing, "missing_edges_skipped": skipped,
-              "graft": a.graft_status, "quick": a.quick}
+              "graft": a.graft_status, "quick": a.quick, "scenarios": scenario_report(model, root, a.quick)}
     model["validation"] = report
     mp.write_text(json.dumps(model, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))

@@ -91,6 +91,24 @@ fresh; run >/dev/null; [ "$(grade '.views.L0.edges[0].grade')" = "graft" ] && pa
 fresh; edit 'm["views"]["L0"]["nodes"][0]["detail"]="handle(req) 가 run_job 을 부른다"'
 out=$(run); [ $? -eq 0 ] && pass "detail 은 쉬운 말 검사 대상 아님" || fail "detail 검사 제외" "$out"
 
+echo "🔧 시나리오"
+fresh; out=$(run)
+[ "$(echo "$out" | jq -c '.scenarios.run')" = '[{"edge":null,"grade":null},{"edge":0,"grade":"graft"},{"edge":1,"grade":"code"}]' ] \
+  && pass "단계별 화살표·등급 기록 (묶음 끝 화살표를 안쪽 박스에 적용)" || fail "시나리오 기록" "$(echo "$out" | jq -c .scenarios)"
+fresh; edit 'm["scenarios"][0]["steps"][2]["evidence"][0]["quote"]="requests.get("'
+out=$(run); [ "$(echo "$out" | jq -r '.scenarios.run[2].grade')" = "unknown" ] && pass "단계 근거가 틀리면 그 단계 unknown (exit 0)" || fail "단계 근거" "$out"
+integrity 'm["scenarios"][0]["steps"][1]["box"]="ghost"' "박스 .ghost. 없음" "없는 박스"
+integrity 'm["scenarios"][0]["steps"].reverse()' "반대 방향" "반대 방향만 있음"
+integrity 'm["scenarios"][0]["steps"][0]["body"]="{{ghost}} 로 넘긴다"' "{{ghost}}" "없는 박스 토큰"
+integrity 'm["scenarios"][0]["steps"]=m["scenarios"][0]["steps"]*3' "단계가 9개" "단계 8개 이상"
+integrity 'm["scenarios"].append(dict(m["scenarios"][0]))' "겹친다" "시나리오 id 중복"
+integrity 'm["scenarios"][0]["steps"][1]["body"]="run_job 을 부른다"' "run_job" "본문 코드 이름"
+integrity 'm["scenarios"][0]["steps"][1]["substeps"][0]["label"]="작업 번호를 확인한다"' "상한 14" "하위 단계 길이"
+integrity 'm["scenarios"]=[]' "1~4개" "시나리오 0개"
+integrity 'm["scenarios"][0]["steps"]=[{"box":"core","title":"엔진","body":"엔진"},{"box":"engine","title":"실행기","body":"실행"}]' "가는 화살표가 없다" "묶음→자기 안쪽 단계는 화살표 아님"
+fresh; edit 'm["scenarios"][0]["steps"].insert(2, {"box":"init","title":"입구","body":"입구"}); m["scenarios"][0]["steps"][3]["box"]="agent"'
+out=$(run); [ $? -eq 0 ] && [ "$(echo "$out" | jq -r '.scenarios.run[3].edge')" = "1" ] && pass "지나온 박스 중 하나에서 이어지면 통과 (나무 모양)" || fail "나무 모양 잇기" "$out"
+fresh; edit 'del m["scenarios"]'; run >/dev/null; [ $? -eq 0 ] && pass "시나리오 없는 모델 통과" || fail "시나리오 없음"
 echo "🔧 누락 탐지"
 mkdir -p "$T/r/graft/.graph"
 cat > "$T/r/graft/.graph/wiring.json" <<'J'

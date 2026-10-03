@@ -42,5 +42,15 @@
       ]
     }
   },
+  "scenarios": [
+    {"id": "run", "title": "요청이 들어오면", "summary": "요청이 엔진을 거쳐 에이전트까지 간다.",
+     "steps": [
+       {"box": "api", "title": "요청 접수", "body": "들어온 요청을 {{core}} 로 넘긴다."},
+       {"box": "engine", "title": "작업 실행", "body": "작업 하나를 실행한다.",
+        "substeps": [{"label": "번호 확인"}, {"label": "실행"}]},
+       {"box": "agent", "title": "에이전트에 전달", "body": "결과를 에이전트에 보낸다.",
+        "evidence": [{"ref": "src/core/engine.py:5", "quote": "requests.post"}]}
+     ]}
+  ],
   "unknowns": []
 }
