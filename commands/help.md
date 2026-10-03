@@ -319,6 +319,7 @@ LLM이 안건/논의/결정/액션/이슈로 구조화된 회의록을 생성, �
 ## 사용법
 /rakis:eli5 <설명할 대상> [--out <dir>] [--quick] [--no-open]
 /rakis:eli5 open [<model.json>]     기존 지도 다시 열기 (낡았으면 다시 만들지 묻는다)
+/rakis:eli5 track [<model.json>]    이 세션의 작업 진행을 지도에 (고친 파일 자동 표시, track off 로 끝)
 
 ## 동작
 조사(graft) → 지도 모델 JSON → validate.py(근거 판정 + 쉬운 말·길이 검사)

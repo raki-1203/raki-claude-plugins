@@ -1,5 +1,5 @@
 {
-  "description": "rakis 플러그인 SessionStart 안내·작업 프롬프트 자동 라우터",
+  "description": "rakis 플러그인 SessionStart 안내·작업 프롬프트 자동 라우터 · eli5 작업 진행 추적(표식이 있는 세션만)",
   "hooks": {
     "SessionStart": [
       {
@@ -19,6 +19,18 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/task-router.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -S \"${CLAUDE_PLUGIN_ROOT}/skills/eli5/bin/track.py\" touch",
             "timeout": 5
           }
         ]

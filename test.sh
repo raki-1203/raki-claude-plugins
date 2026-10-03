@@ -302,7 +302,7 @@ test_orca() {
 test_eli5() {
   echo "🔬 eli5 유닛 테스트"
   local t
-  for t in prep plain layout validate render open; do
+  for t in prep plain layout validate render open track; do
     if bash "tests/unit/test_eli5_$t.sh"; then
       pass "eli5 $t"
     else

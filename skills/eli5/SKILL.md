@@ -22,6 +22,7 @@ license: MIT
 ```
 /rakis:eli5 <설명할 대상> [--out <dir>] [--quick] [--no-open]
 /rakis:eli5 open [<model.json>]      기존 지도를 다시 연다
+/rakis:eli5 track [<model.json>]     이 세션의 작업 진행을 지도에 띄운다 (끝낼 때 track off)
 ```
 
 - `--out` — 출력 폴더. 기본 `<레포>/.eli5/` (`.git/info/exclude` 로 숨긴다)
@@ -221,6 +222,33 @@ python3 "$SKILL/bin/open.py" open "$OUT/<slug>.html"
 
 v2 모델(`meta.version` 없음)은 `render.py` 가 거부한다. "예전 형식 지도라 다시 만든다" 고 알리고 Phase 1 부터.
 층이 여러 개인 v3 초기 지도(views 2개 이상·drill)도 검증기가 거부한다 — 안쪽 층을 묶음으로 옮겨 다시 만든다.
+
+## track — 작업 진행을 지도에
+
+코드를 읽지 않는 사람이 "에이전트가 지금 어디를 고치고 있고 어디까지 됐나" 를 지도 위에서 본다. 구현을 시작할 때 켠다.
+
+```bash
+python3 "$SKILL/bin/track.py" start --model "$MODEL"     # 표식 + 추적 화면 <slug>.track.<세션>.html
+python3 "$SKILL/bin/open.py" open "<출력의 html 경로>"
+```
+
+- **고친 파일은 저절로 표시된다.** rakis 플러그인의 PostToolUse 훅이 Edit·Write 마다 그 파일을 박스에 매핑해 기록하고 화면을 다시 그린다 (박스에 "● N파일"). 지시문을 잊어도 빠지지 않는다. 어느 박스에도 안 맞는 파일은 "지도 밖 변경" 으로 보인다 — 지도가 낡기 시작했다는 신호다
+- **판단 상태는 에이전트가 쓴다.** 항목 상태가 바뀔 때마다 모델 옆 `<slug>.progress.<세션>.json` 을 고치고 `python3 "$SKILL/bin/render.py" "$MODEL" --root "$ROOT" --track "$CLAUDE_CODE_SESSION_ID"` 를 부른다:
+
+  ```json
+  {"task": {"title": "<과제, 명사구>", "goal": "<왜·끝나면 무엇이 바뀌나>", "doneWhen": "<완료 조건 한 문장>"},
+   "updated": "2026-10-03 22:40 KST",
+   "items": [{"id": "a", "title": "<쉬운 말>", "body": "<한두 문장>", "state": "plan|now|done|blocked",
+              "boxes": ["<지도 박스 id>"], "evidence": [{"text": "pytest 12 passed", "href": "<있으면 http(s)>"}]}],
+   "footer": "<컨텍스트가 압축됐으면 그렇다고>"}
+  ```
+
+  - `done` 은 이 세션의 도구 결과(통과한 테스트·쓴 파일·머지된 PR)로 입증된 것만, `evidence` 필수. 시도했지만 확인 못 한 일은 `now` 나 `blocked`
+  - `now` 는 최대 1개. 항목은 5~9개, 함수 하나가 한 항목이 되지 않게
+  - 규칙을 어기면 화면 머리에 오류가 나오고 진행 표시는 빠진다 (고친 파일 표시는 남는다)
+  - 갱신은 일의 일부다 — 채팅에 보고하지 않는다
+- 화면은 15초마다 다시 읽는다. 새로 완료된 박스는 한 번 반짝인다. 머리의 "에이전트 갱신 N분 전" 이 오래되면 판단 상태가 낡은 것이다
+- **끝낼 때**: `python3 "$SKILL/bin/track.py" stop --model "$MODEL"` — 표식을 지우고 자동 새로고침을 끈 마지막 화면을 남긴다
 
 ## 하지 않는 것
 
