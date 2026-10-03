@@ -5,8 +5,9 @@ render.py(그리기)와 validate.py(관통 검사)가 이 모듈 하나를 쓴�
 segment_hits_rect 는 archify (MIT, Copyright (c) 2026 tt-a1i, 2025 Cocoon AI)
 renderers/shared/geometry.mjs 의 segmentIntersectsRect 와 같은 검사다 (Liang–Barsky 선분 자르기).
 """
-W, H, GX, GY, PAD, FP, FT = 180, 72, 110, 80, 30, 14, 48
+W, H, GX, GY, PAD, FP, FT = 180, 72, 110, 110, 30, 14, 48  # GY 는 묶음 머리(FT)+바닥(FP)을 빼고도 화살표가 보일 만큼
 MAX_COLS = 5
+MIN_EDGE = 40  # 이보다 짧은 화살표는 테두리·라벨에 묻혀 안 보인다 (archify 도 짧은 연결을 거부한다)
 
 
 def children(view):
@@ -105,6 +106,9 @@ def problems(view, lay):
         seg = lay["edges"][i]
         if not seg:
             continue
+        n = ((seg[2] - seg[0]) ** 2 + (seg[3] - seg[1]) ** 2) ** 0.5
+        if n < MIN_EDGE:
+            out.append(f"{name(e['from'])}→{name(e['to'])} 화살표가 {n:.0f}px 로 너무 짧아 잘 안 보인다 — 두 박스(묶음) 사이를 한 칸 띄운다")
         skip = set()
         for end in (e["from"], e["to"]):
             skip.add(end)
