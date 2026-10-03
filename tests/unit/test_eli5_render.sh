@@ -113,4 +113,5 @@ if command -v node >/dev/null 2>&1; then
   echo "$out" | grep -q '&lt;b&gt;x&lt;/b&gt;' && echo "$out" | grep -q 'data-sel="core">작업 &lt;엔진&gt;</button>' && echo "$out" | grep -q '{{ghost}}' \
     && pass "본문 이스케이프 — {{id}} 만 박스 버튼" || fail "본문 이스케이프" "$out"
 fi
+grep -q 'querySelector(".node.cur, .frame.cur")' "$TPL" && grep -q 'block: "nearest"' "$TPL" && pass "단계를 넘기면 현재 박스가 보이게 스크롤" || fail "현재 박스 스크롤"
 finish

@@ -343,6 +343,9 @@ const MODEL = /*__ELI5_MODEL__*/null;
     const h = state.sc ? `#scenario=${encodeURIComponent(state.sc)}&step=${state.step + 1}` : "#scenario=none";
     if (location.hash !== h) history.replaceState(null, "", h);
     scbar(); draw(); side();
+    // 지도가 길면 현재 단계 박스가 화면 밖일 수 있다 — 보이는 곳까지만 스크롤한다
+    const cur = document.querySelector(".node.cur, .frame.cur");
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({block: "nearest", behavior: "smooth"});
   }
   function select(nid) {
     state.node = nid; draw(); side();
