@@ -75,7 +75,7 @@ else
   echo "  ⏭️  node 없음 — 칩 이름 테스트 건너뜀"
 fi
 TPL="$ELI5_FIX/../../../skills/eli5/assets/map.html"
-! grep -q '340px' "$TPL" && grep -q 'aside.side{position:fixed' "$TPL" && grep -q 'classList.toggle("open"' "$TPL" \
+! grep -q 'grid-template-columns:minmax(0,1fr) 340px' "$TPL" && grep -q 'aside.side{position:fixed' "$TPL" && grep -q 'classList.toggle("open"' "$TPL" \
   && pass "A: 카드는 박스를 누를 때만 열리는 겹침 카드 — 지도는 전체 폭" || fail "A: 겹침 카드"
 grep -q '<details class="code"><summary>코드 자세히</summary>' "$TPL" && grep -q 'overflow-wrap:anywhere' "$TPL" \
   && pass "B: 코드·인터페이스는 접힌 '코드 자세히' 안, 긴 코드는 줄바꿈" || fail "B: 코드 접기"
@@ -97,4 +97,6 @@ PY
 grep -q 'MODEL.layout' "$TPL" && grep -q 'class: "frame' "$TPL" && grep -q 'data-sel' "$TPL" && ! grep -q 'function box(' "$TPL" \
   && pass "지도는 MODEL.layout 으로 그리고 묶음·안쪽 박스 버튼이 있다" || fail "layout 그리기"
 grep -q '속한 묶음' "$TPL" && grep -q 'data-sel="${esc(n.group)}"' "$TPL" && pass "안쪽 박스 카드에 속한 묶음 링크" || fail "속한 묶음 링크"
+grep -q 'body.card-open main{padding-right' "$TPL" && grep -q 'classList.toggle("card-open"' "$TPL" && grep -q 'width:min(340px,100vw)' "$TPL" \
+  && pass "카드가 열리면 지도를 밀어낸다 (넓은 화면)" || fail "카드 밀어내기"
 finish
