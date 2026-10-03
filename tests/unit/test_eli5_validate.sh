@@ -105,6 +105,8 @@ integrity 'm["scenarios"][0]["steps"].reverse()' "반대 방향" "반대 방향�
 integrity 'm["scenarios"][0]["steps"][0]["body"]="{{ghost}} 로 넘긴다"' "{{ghost}}" "없는 박스 토큰"
 integrity 'm["scenarios"][0]["steps"]=m["scenarios"][0]["steps"]*3' "단계가 9개" "단계 8개 이상"
 integrity 'm["scenarios"].append(dict(m["scenarios"][0]))' "겹친다" "시나리오 id 중복"
+integrity 'm["scenarios"][0]["id"]="weird:id"' "영문 소문자" "시나리오 id 문자 제한 (data-play 구분자 보호)"
+integrity 'e=m["views"]["L0"]["edges"][1]; e["from"]="core"; e["grade"]="record"; e["evidence"]={"ref":"src/core/engine.py"}' "묶음 대신" "묶음 끝 근거가 줄 번호 없는 경로여도 거부 (record)"
 integrity 'm["scenarios"][0]["steps"][1]["body"]="run_job 을 부른다"' "run_job" "본문 코드 이름"
 integrity 'm["scenarios"][0]["steps"][1]["substeps"][0]["label"]="작업 번호를 확인한다"' "상한 14" "하위 단계 길이"
 integrity 'm["scenarios"]=[]' "1~4개" "시나리오 0개"

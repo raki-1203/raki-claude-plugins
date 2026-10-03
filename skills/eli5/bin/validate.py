@@ -145,6 +145,7 @@ def effective_nodes(view):
 
 
 TOKEN_RE = re.compile(r"\{\{([^{}]+)\}\}")
+SCENARIO_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 def _ends(i, nodes, kids):
@@ -188,6 +189,8 @@ def scenario_errors(model):
         w = f"scenarios[{sid}]"
         if not sid or sid in ids:
             errs.append(f"{w}: id 가 비었거나 겹친다 — 시나리오마다 다른 영문 id")
+        elif not SCENARIO_ID_RE.match(str(sid)):
+            errs.append(f"{w}: id 는 영문 소문자·숫자·- 만 — 주소(#scenario=…)와 화면 버튼에 그대로 쓰인다")
         ids.add(sid)
         for f, limit in (("title", plain.TITLE_MAX), ("summary", None)):
             t = sc.get(f)
@@ -309,7 +312,8 @@ def frame_edge_errors(model):
             ev = e.get("evidence") or {}
             sides = []
             if e.get("from") in kids:
-                path = (ev.get("from_sym") or "").split("#")[0] or (parse_ref(ev.get("ref"))[0] or "")
+                ref = ev.get("ref") or ""  # code 는 path:line, record 는 줄 없는 경로일 수 있다 (커밋·PR 이면 어느 박스에도 안 맞는다)
+                path = (ev.get("from_sym") or "").split("#")[0] or parse_ref(ref)[0] or ref
                 sides.append(("출발", e["from"], path))
             if e.get("to") in kids and ev.get("to_sym"):
                 sides.append(("도착", e["to"], ev["to_sym"].split("#")[0]))
