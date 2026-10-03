@@ -19,10 +19,13 @@
         {"id": "api", "kind": "service", "title": "요청 받는 곳", "say": "들어온 요청을 엔진에 넘긴다",
          "code": ["src/api/server.py", "handle"], "row": 0, "col": 0, "paths": ["src/api/"]},
         {"id": "core", "kind": "module", "title": "작업 엔진", "say": "작업 하나를 실행한다",
-         "detail": "작업 번호를 받아 실행하고 결과를 에이전트에 보낸다.",
-         "code": ["src/core/engine.py", "run_job"], "row": 0, "col": 1, "paths": ["src/core/"], "drill": "L1-core"},
+         "detail": "작업 번호를 받아 실행하고 결과를 에이전트에 보낸다.", "code": ["src/core/"]},
+        {"id": "engine", "group": "core", "kind": "module", "title": "작업 실행기", "say": "작업을 실행하고 결과를 보낸다",
+         "code": ["src/core/engine.py", "run_job"], "row": 0, "col": 1, "paths": ["src/core/engine.py"]},
+        {"id": "init", "group": "core", "kind": "module", "title": "모듈 입구", "say": "엔진을 바깥에 내보인다",
+         "row": 1, "col": 1, "paths": ["src/core/__init__.py"]},
         {"id": "agent", "kind": "external", "title": "에이전트 서비스", "say": "바깥에서 작업을 받아 처리한다",
-         "row": 1, "col": 1, "paths": []}
+         "row": 2, "col": 0, "paths": []}
       ],
       "edges": [
         {"from": "api", "to": "core", "label": "작업 실행", "iface": "run_job", "grade": "graft",
@@ -37,18 +40,6 @@
         {"id": "agent-http", "title": "에이전트 호출", "from": "core", "to": "agent", "transport": "http",
          "items": [{"sig": "POST http://agent/run", "desc": "작업 id 전달", "ref": "src/core/engine.py:5"}]}
       ]
-    },
-    "L1-core": {
-      "title": "L1 · 작업 엔진",
-      "hint": "엔진 안쪽",
-      "parent": "L0",
-      "rules": [],
-      "nodes": [
-        {"id": "engine", "kind": "module", "title": "작업 실행기", "say": "작업을 실행하고 결과를 보낸다",
-         "code": ["src/core/engine.py"], "row": 0, "col": 0, "paths": ["src/core/engine.py"]}
-      ],
-      "edges": [],
-      "ifaces": []
     }
   },
   "unknowns": []

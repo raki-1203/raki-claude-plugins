@@ -6,7 +6,7 @@ renderers/shared/utils.mjs 의 textUnits 를 옮긴 것이다 — 전각 글자�
 """
 import re
 
-TITLE_MAX, SAY_MAX, LABEL_MAX = 24, 30, 18
+TITLE_MAX, SAY_MAX, LABEL_MAX = 24, 30, 14
 KINDS = ("person", "external", "service", "module", "store", "job")
 
 FULLWIDTH_RE = re.compile(

@@ -16,6 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import plain  # noqa: E402
+import layout  # noqa: E402
 
 GRADES = ("graft", "code", "record", "unknown")
 RULE_GRADES = ("code", "record", "unknown")
@@ -34,12 +35,11 @@ def integrity_errors(model):
         nodes = {n["id"]: n for n in v.get("nodes", [])}
         ifaces = {i["id"] for i in v.get("ifaces", [])}
         used = set()
-        if v.get("parent") and v["parent"] not in views:
-            errs.append(f"{vid}: parent '{v['parent']}' 없음")
+        kids = layout.children(v)
         cells = {}
         for n in v.get("nodes", []):
-            if n.get("drill") and n["drill"] not in views:
-                errs.append(f"{vid}/{n['id']}: drill 대상 view '{n['drill']}' 없음")
+            if n["id"] in kids:
+                continue  # 묶음은 칸이 없다 — 테두리는 안쪽 박스로 계산한다
             row, col, span = n.get("row", 0), n.get("col", 0), n.get("span", 1)
             for c in range(col, col + span):
                 if (row, c) in cells:
@@ -103,7 +103,45 @@ def v3_errors(model):
         for e in v.get("edges", []):
             if e.get("label"):
                 errs += plain.check_plain(f"{vid}: {e.get('from')}→{e.get('to')} label", e["label"], g, plain.LABEL_MAX)
+    views = model.get("views") or {}
+    if len(views) != 1:
+        errs.append(f"views 가 {len(views)}개 — 지도는 한 장이다. 안쪽 박스는 \"group\" 으로 묶음에 넣는다")
+    for vid, v in views.items():
+        if v.get("parent") is not None:
+            errs.append(f"{vid}.parent 는 없어졌다 — 지도는 한 장이다 (null)")
+        nodes = {n["id"]: n for n in v.get("nodes", [])}
+        kids = layout.children(v)
+        for n in v.get("nodes", []):
+            w, g = f"{vid}/{n['id']}", n.get("group")
+            if "drill" in n:
+                errs.append(f"{w}.drill 은 없어졌다 — 안쪽 박스에 \"group\": \"{n['id']}\" 를 단다")
+            if g is not None:
+                if g == n["id"]:
+                    errs.append(f"{w}.group 이 자기 자신이다 — 바깥 묶음 박스의 id 를 쓴다")
+                elif g not in nodes:
+                    errs.append(f"{w}.group '{g}' 없음 — 같은 지도의 박스 id 를 쓴다")
+                elif nodes[g].get("group") is not None:
+                    errs.append(f"{w}.group '{g}' 는 이미 묶음 안의 박스다 — 묶음은 한 단계만")
+            if n["id"] in kids:
+                if len(kids[n["id"]]) < 2:
+                    errs.append(f"{w} 묶음의 안쪽 박스가 1개 — 2개 이상 넣거나 묶음을 풀어 보통 박스로")
+                for f in ("row", "col", "span", "paths"):
+                    if f in n:
+                        errs.append(f"{w}.{f} — 묶음은 자기 칸·경로가 없다 (안쪽 박스로 계산한다)")
+            elif n.get("col", 0) + n.get("span", 1) > layout.MAX_COLS:
+                errs.append(f"{w}.col {n.get('col', 0)} — 열은 0~{layout.MAX_COLS - 1} (span 포함, 한 화면 폭)")
+    if not errs:  # 구조가 맞을 때만 배치를 계산한다 — 아니면 관통 오류가 잡음이 된다
+        for vid, v in views.items():
+            errs += [f"{vid}: {p}" for p in layout.problems(v, layout.compute(v))]
     return errs
+
+
+def effective_nodes(view):
+    """묶음은 자기 paths 가 없다 — graft 판정에는 안쪽 박스 paths 의 합을 쓴다."""
+    kids = layout.children(view)
+    nodes = {n["id"]: n for n in view.get("nodes", [])}
+    return {nid: ({**n, "paths": [p for c in kids[nid] for p in nodes[c].get("paths", [])]} if nid in kids else n)
+            for nid, n in nodes.items()}
 
 
 def under(path, prefixes):
@@ -232,13 +270,16 @@ def missing_edges(model, root):
         return [], f"wiring.json 버전 {ver} 미지원 — 누락 탐지 건너뜀"
     out, seen = [], set()
     for vid, v in model["views"].items():
-        drawn = {(e["from"], e["to"]) for e in v.get("edges", [])}
+        kids = layout.children(v)
+        expand = lambda i: [i, *kids.get(i, [])]  # 묶음 끝 화살표는 안쪽 박스 모두의 화살표로 친다
+        drawn = {(a, b) for e in v.get("edges", []) for a in expand(e["from"]) for b in expand(e["to"])}
+        leaves = [n for n in v.get("nodes", []) if n["id"] not in kids]
         for ed in data.get("edges", []):
             if ed.get("relation") != "calls":
                 continue
             sp, tp = ed["source"].split("#")[0], ed["target"].split("#")[0]
-            a = next((n["id"] for n in v.get("nodes", []) if under(sp, n.get("paths"))), None)
-            b = next((n["id"] for n in v.get("nodes", []) if under(tp, n.get("paths"))), None)
+            a = next((n["id"] for n in leaves if under(sp, n.get("paths"))), None)
+            b = next((n["id"] for n in leaves if under(tp, n.get("paths"))), None)
             if a and b and a != b and (a, b) not in drawn and (vid, a, b) not in seen:
                 seen.add((vid, a, b))
                 out.append({"view": vid, "from": a, "to": b, "example": f"{ed['source']} → {ed['target']}"})
@@ -267,7 +308,7 @@ def main():
 
     downgrades = []
     for vid, v in model["views"].items():
-        nodes = {n["id"]: n for n in v.get("nodes", [])}
+        nodes = effective_nodes(v)
         for e in v.get("edges", []):
             # 사람이 읽는 목록("확인 못 한 것")에 들어가므로 id 가 아니라 이름으로 쓴다
             label = (f"{v.get('title') or vid}: {nodes[e['from']].get('title') or e['from']} → {nodes[e['to']].get('title') or e['to']}"

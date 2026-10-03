@@ -59,10 +59,10 @@ integrity() {
      && [ "$(cat "$T/m.model.json")" = "$before" ]; then pass "$3"; else fail "$3" "rc=$rc $out"; fi
 }
 integrity 'm["views"]["L0"]["edges"][0]["to"]="ghost"' "노드 없음" "없는 노드"
-integrity 'm["views"]["L0"]["nodes"][1]["drill"]="ghost"' "drill 대상" "없는 drill"
+integrity 'm["views"]["L0"]["nodes"][0]["drill"]="L0"' "drill 은 없어졌다" "drill 금지"
 integrity 'm["views"]["L0"]["edges"][0]["iface"]="ghost"' "iface .ghost. 없음" "없는 iface"
 integrity 'm["views"]["L0"]["edges"][0].pop("iface")' "참조하는 edge 가 없다" "고아 iface"
-integrity 'm["views"]["L0"]["nodes"][1]["col"]=0' "겹쳐" "격자 겹침"
+integrity 'm["views"]["L0"]["nodes"][2].update(row=0, col=0)' "겹쳐" "격자 겹침"
 integrity 'm["views"]["L0"]["rules"][0]["grade"]="graft"' "규칙은" "규칙 graft 등급"
 integrity 'm["meta"]["version"]=2' "v3 지도만" "v2 모델 거부"
 integrity 'm["meta"].pop("version")' "v3 지도만" "version 없음 거부"
@@ -76,6 +76,18 @@ integrity 'm["views"]["L0"]["edges"][0]["label"]="run_job"' "run_job" "edge labe
 integrity 'del m["meta"]["glossary"]["HTTP"]' "HTTP" "glossary 없는 용어"
 integrity 'm["meta"]["glossary"]["graph.astream"]="그래프 실행"' "코드 이름이다" "glossary 우회 금지"
 integrity 'm["meta"]["glossary"]["API"]=""' "풀이가 비었다" "glossary 빈 풀이"
+integrity 'm["views"]["L1"]={"title":"L1 · 안쪽","hint":"안쪽","parent":"L0","rules":[],"nodes":[],"edges":[],"ifaces":[]}' "지도는 한 장" "view 둘 거부"
+integrity 'm["views"]["L0"]["parent"]="L0"' "parent 는 없어졌다" "parent 금지"
+integrity 'm["views"]["L0"]["nodes"][1]["col"]=1' "묶음은 자기 칸" "묶음에 칸 금지"
+integrity 'm["views"]["L0"]["nodes"][3].pop("group")' "안쪽 박스가 1개" "묶음 안쪽 1개 거부"
+integrity 'm["views"]["L0"]["nodes"][2]["group"]="ghost"' "group .ghost. 없음" "없는 group"
+integrity 'm["views"]["L0"]["nodes"][1]["group"]="core"' "자기 자신" "group 자기 자신"
+integrity 'm["views"]["L0"]["nodes"][1]["group"]="api"' "한 단계만" "묶음 안의 묶음 거부"
+integrity 'm["views"]["L0"]["nodes"][4]["col"]=5' "열은 0~4" "열 5개 상한"
+integrity 'm["views"]["L0"]["nodes"][4].update(row=0, col=2)' "지난다" "화살표 관통"
+integrity 'm["views"]["L0"]["nodes"][4].update(row=1, col=1); m["views"]["L0"]["nodes"][3].update(row=2, col=1)' "테두리 안에" "묶음 테두리 침범"
+integrity 'm["views"]["L0"]["edges"][0]["label"]="작업을 실행해 달라"' "칸, 상한 14" "edge label 14칸"
+fresh; run >/dev/null; [ "$(grade '.views.L0.edges[0].grade')" = "graft" ] && pass "묶음 끝 화살표 graft 유지 (안쪽 paths 합)" || fail "묶음 graft" "$(grade '.validation.downgrades')"
 fresh; edit 'm["views"]["L0"]["nodes"][0]["detail"]="handle(req) 가 run_job 을 부른다"'
 out=$(run); [ $? -eq 0 ] && pass "detail 은 쉬운 말 검사 대상 아님" || fail "detail 검사 제외" "$out"
 
@@ -88,7 +100,7 @@ cat > "$T/r/graft/.graph/wiring.json" <<'J'
  {"source":"src/core/engine.py","target":"requests","relation":"imports"}]}
 J
 fresh; out=$(run)
-[ "$(echo "$out" | jq -c '[.missing_edges[]|[.view,.from,.to]]')" = '[["L0","core","api"]]' ] && pass "그림에 없는 관계 1건 (방향 구분)" || fail "누락 탐지" "$(echo "$out" | jq -c .missing_edges)"
+[ "$(echo "$out" | jq -c '[.missing_edges[]|[.view,.from,.to]]')" = '[["L0","engine","api"]]' ] && pass "그림에 없는 관계 1건 — 잎 박스 단위 (방향 구분)" || fail "누락 탐지" "$(echo "$out" | jq -c .missing_edges)"
 sed -i '' 's/"version":1/"version":2/' "$T/r/graft/.graph/wiring.json"
 fresh; out=$(run)
 echo "$out" | jq -e '(.missing_edges|length)==0 and (.missing_edges_skipped|test("버전"))' >/dev/null && pass "wiring 버전 불일치 → 건너뜀" || fail "버전 불일치" "$out"
