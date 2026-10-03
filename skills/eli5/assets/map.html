@@ -42,6 +42,10 @@ ul{margin:0 0 12px;padding-left:18px}
 .scbar button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
 .edge.path path{stroke:var(--accent);stroke-width:3;stroke-dasharray:none}
 .edge.path text{fill:var(--accent);font-weight:600}
+.edge.hl path{stroke:var(--record);stroke-width:4;stroke-dasharray:none}.edge.hl text{fill:var(--record)}.edge.dim.hl{opacity:1}
+.forkmark{fill:var(--record);font-size:12px}
+.fork{margin:10px 0 2px;padding:8px 10px;border:1px dashed var(--record);border-radius:8px;font-size:13px}
+.fork .br{margin:5px 0}.fork .br.on{font-weight:600}
 .node.off,.frame.off{opacity:.25}
 .node.cur rect.bg{fill:var(--accent-soft);stroke:var(--accent);stroke-width:3}
 .badge{cursor:pointer}.badge rect{fill:var(--accent)}.badge text{fill:#fff;font-size:11px;font-weight:700}
@@ -156,6 +160,9 @@ const MODEL = /*__ELI5_MODEL__*/null;
   const chip = full => full ? `<button class="chip" type="button" data-copy="${esc(full)}" title="${esc(full)} — 누르면 복사">${esc(short(full))}</button>` : "";
   const codeList = n => [...new Set([...(n.code || []), ...(n.paths || [])])];
   const SCS = MODEL.scenarios || [], SCV = (MODEL.validation || {}).scenarios || {};
+  const FORK = new Set((V.edges || []).filter(e => e.kind === "branch").map(e => e.from));
+  // 갈림길이 바깥 묶음에서 나가면 안쪽 박스에서도 보인다 — 시나리오가 안쪽 박스를 지날 때 갈라지는 곳을 놓치지 않게
+  const forks = id => (V.edges || []).map((e, i) => [e, i]).filter(([e]) => e.kind === "branch" && (e.from === id || (NODE[id] && e.from === NODE[id].group)));
   const sc = () => SCS.find(s => s.id === state.sc) || null;
   const stepBody = t => esc(t).replace(/\{\{([^{}]+)\}\}/g, (m, id) => NODE[id] ? `<button class="link" type="button" data-sel="${esc(id)}">${esc(NODE[id].title)}</button>` : m);
   const nodeTitle = (vid, id) => ((views[vid].nodes || []).find(n => n.id === id) || {}).title || id;
@@ -204,6 +211,8 @@ const MODEL = /*__ELI5_MODEL__*/null;
     for (const g of Object.keys(GRADE)) {
       const m = el("marker", {id: "ah-" + g, viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse"}, defs);
       el("path", {d: "M0,0 L10,5 L0,10 z", class: "g-" + g, style: "fill:currentColor;stroke:none;stroke-dasharray:none"}, m);
+      const f = el("marker", {id: "fk-" + g, viewBox: "0 0 10 10", refX: "5", refY: "5", markerWidth: "9", markerHeight: "9", orient: "auto"}, defs);
+      el("path", {d: "M5,0 L10,5 L5,10 L0,5 z", class: "g-" + g, style: "fill:currentColor;stroke:none;stroke-dasharray:none"}, f);
     }
     const R = rel(state.node), S = !state.node && sc(), rows = S ? (SCV[S.id] || []) : [];
     // 한 번에 한 단계 — 지금까지 지나온 단계만 번호·강조를 켠다
@@ -218,6 +227,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
       el("circle", {cx: r[0] + 16, cy: r[1] + 17, r: 5, class: "k-" + (n.kind || "module")}, g);
       el("text", {x: r[0] + 28, y: r[1] + 22, class: "title"}, g).textContent = n.title;
       el("text", {x: r[0] + 14, y: r[1] + 38, class: "sub"}, g).textContent = n.say || "";
+      if (FORK.has(fid)) el("text", {x: r[0] + r[2] - 16, y: r[1] + 22, class: "forkmark"}, g).textContent = "◆";
       el("title", {}, g).textContent = (KIND[n.kind] || "") + " 묶음 — 빈 곳을 누르면 설명";
       g.addEventListener("click", () => select(state.node === fid ? null : fid));
     }
@@ -225,14 +235,15 @@ const MODEL = /*__ELI5_MODEL__*/null;
       const s = LAY.edges[i];
       if (!s) return;
       const [x1, y1, x2, y2] = s, g2 = shown(e);
-      const g = el("g", {class: "edge" + (R ? (!R.has(e.from) && !R.has(e.to) ? " dim" : "") : S ? (pathE.has(i) ? " path" : " dim") : "")}, svg);
+      const g = el("g", {class: "edge" + (R ? (!R.has(e.from) && !R.has(e.to) ? " dim" : "") : S ? (pathE.has(i) ? " path" : " dim") : ""), "data-i": i}, svg);
       el("path", {d: `M${x1},${y1} L${x2},${y2}`, class: "g-" + g2, "marker-end": `url(#ah-${g2})`}, g);
+      if (e.kind === "branch") g.lastChild.setAttribute("marker-start", `url(#fk-${g2})`);
       if (e.label) {
         const t = el("text", {x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 4, "text-anchor": "middle", class: "g-" + g2}, g);
         t.textContent = e.label;
         try { const bb = t.getBBox(); g.insertBefore(el("rect", {x: bb.x - 3, y: bb.y - 1, width: bb.width + 6, height: bb.height + 2, class: "lbl-bg"}), t); } catch (_) {}
       }
-      el("title", {}, g).textContent = GRADE[e.grade] + (evText(e.evidence) ? " — " + evText(e.evidence) : "");
+      el("title", {}, g).textContent = (e.when ? "조건: " + e.when + "\n" : "") + GRADE[e.grade] + (evText(e.evidence) ? " — " + evText(e.evidence) : "");
       if (e.iface) { g.style.cursor = "pointer"; g.addEventListener("click", () => flash(state.view, e.iface)); }
     });
     for (const n of V.nodes || []) {
@@ -243,6 +254,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
       el("rect", {x: B[0] + 1, y: B[1] + 1, width: 5, height: B[3] - 2, rx: 2, class: "k-" + (n.kind || "module")}, g);
       el("text", {x: B[0] + 16, y: B[1] + 27, class: "title"}, g).textContent = n.title;
       el("text", {x: B[0] + 16, y: B[1] + 47, class: "sub"}, g).textContent = n.say || "";
+      if (FORK.has(n.id)) el("text", {x: B[0] + B[2] - 16, y: B[1] + 20, class: "forkmark"}, g).textContent = "◆";
       const terms = termsIn(n.title, n.say);
       el("title", {}, g).textContent = (KIND[n.kind] || "") + terms.map(t => `\n${t}: ${gloss[t]}`).join("");
       g.addEventListener("click", () => select(state.node === n.id ? null : n.id));
@@ -257,6 +269,18 @@ const MODEL = /*__ELI5_MODEL__*/null;
       g.addEventListener("click", ev => { ev.stopPropagation(); play(state.sc, ns[0] - 1); });
     }
   }
+  function forkHtml(id, taken) {
+    const list = forks(id), BR = (MODEL.validation || {}).branches || {};
+    if (!list.length) return "";
+    return `<div class="fork"><b>◆ 여기서 갈라진다</b>${list.map(([e, i]) => {
+      const on = taken === i;
+      const other = SCS.map(s => [s, (SCV[s.id] || []).findIndex(r => r.edge === i)]).find(([s, k]) => k > 0 && !(on && s.id === state.sc));
+      return `<div class="br${on ? " on" : ""}" data-hl="${i}">${on ? "●" : "○"} ${rich(e.when || "")} → <b>${esc(nodeTitle(state.view, e.to))}</b>`
+        + (BR[i] === "unknown" ? ` <span class="tag g-unknown">미확인</span>` : "")
+        + (on ? ` <span class="detail">← 이 이야기</span>` : "")
+        + (other && !on ? ` <button class="link" type="button" data-play="${esc(other[0].id)}:${other[1]}">이 길 따라가기</button>` : "") + `</div>`;
+    }).join("")}</div>`;
+  }
   function scCard(S) {
     const rows = SCV[S.id] || [], N = S.steps.length, i = state.step, st = S.steps[i];
     const row = rows[i] || {}, g = row.grade, e = row.edge;
@@ -267,7 +291,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
         <span>${i + 1} / ${N}</span>
         <button class="link" type="button" data-step="${i + 1}" ${i < N - 1 ? "" : "disabled"}>다음 →</button></div>
       <div class="now"><h3><span class="no">${i + 1}</span>${rich(st.title)}${badge}</h3>
-        <p>${stepBody(st.body || "")}</p>${(st.substeps || []).length ? `<div class="subs">${st.substeps.map(x => esc(x.label)).join(" → ")}</div>` : ""}${ev}</div>
+        <p>${stepBody(st.body || "")}</p>${(st.substeps || []).length ? `<div class="subs">${st.substeps.map(x => esc(x.label)).join(" → ")}</div>` : ""}${ev}${forkHtml(st.box, (rows[i + 1] || {}).edge)}</div>
       <p class="detail">${i < N - 1 ? "→ 키나 \"다음\"을 누르면 지도에 다음 박스가 켜진다." : "마지막 단계다. 위 버튼으로 다른 흐름을 골라 볼 수 있다."}</p>
       <details class="allsteps"><summary>전체 단계 ${N}개 보기</summary><ol class="steps">${S.steps.map((x, k) =>
         `<li class="step${k === i ? " cur" : ""}" data-step="${k}"><span class="no">${k + 1}</span>${rich(x.title)}</li>`).join("")}</ol></details>`;
@@ -296,6 +320,7 @@ const MODEL = /*__ELI5_MODEL__*/null;
     $("side").innerHTML = `${state.sc ? `<p><button class="link" type="button" data-back>← 시나리오로</button></p>` : ""}<div class="k"><i style="background:var(--k-${esc(n.kind)})"></i>${KIND[n.kind] || ""}</div>
       <h2>${rich(n.title)}</h2><p>${rich(n.say || "")}</p>${n.detail ? `<p class="detail">${rich(n.detail)}</p>` : ""}
       ${n.group && NODE[n.group] ? `<p class="detail">속한 묶음: <button class="link" type="button" data-sel="${esc(n.group)}">${esc(NODE[n.group].title)}</button> — 묶음의 연결은 묶음 카드에</p>` : ""}
+      ${forkHtml(n.id, null)}
       ${KIDS[n.id] ? `<h3>안쪽 박스</h3>${KIDS[n.id].map(c => `<div class="conn"><button class="link" type="button" data-sel="${esc(c)}">${esc(NODE[c].title)}</button> — ${esc(NODE[c].say || "")}</div>`).join("")}` : ""}
       ${conns ? `<h3>연결</h3>${conns}` : ""}
       ${terms.length ? `<h3>용어</h3>${terms.map(t => `<div><b>${esc(t)}</b> — ${esc(gloss[t])}</div>`).join("")}` : ""}
@@ -305,8 +330,9 @@ const MODEL = /*__ELI5_MODEL__*/null;
       <p><button class="link" type="button" data-close>닫기</button></p>`;
   }
   $("side").addEventListener("click", ev => {
-    const t = ev.target.closest && ev.target.closest("[data-copy],[data-sel],[data-close],[data-step],[data-back]");
+    const t = ev.target.closest && ev.target.closest("[data-copy],[data-sel],[data-close],[data-step],[data-back],[data-play]");
     if (!t) return;
+    if (t.dataset.play) { const [sid, k] = t.dataset.play.split(":"); return play(sid, +k); }
     if (t.dataset.sel) return select(t.dataset.sel);
     if (t.dataset.step !== undefined) return t.disabled ? null : play(state.sc, +t.dataset.step);
     if (t.hasAttribute("data-back")) return select(null);
@@ -314,6 +340,12 @@ const MODEL = /*__ELI5_MODEL__*/null;
     const text = t.dataset.copy, label = t.textContent;
     try { navigator.clipboard.writeText(text); } catch (_) {}
     t.textContent = "복사됨"; setTimeout(() => { t.textContent = label; }, 900);
+  });
+  $("side").addEventListener("mouseover", ev => {
+    const b = ev.target.closest && ev.target.closest("[data-hl]");
+    document.querySelectorAll(".edge.hl").forEach(x => x.classList.remove("hl"));
+    const g = b && document.querySelector(`.edge[data-i="${b.dataset.hl}"]`);
+    if (g) g.classList.add("hl");
   });
   function lists() {
     const v = views[state.view], val = MODEL.validation || {};

@@ -118,4 +118,8 @@ grep -q 'class="allsteps"' "$TPL" && grep -q 'class="now"' "$TPL" && pass "카�
 grep -q 'S.steps.slice(0, state.step + 1)' "$TPL" && grep -q 'rows.slice(1, state.step + 1)' "$TPL" && pass "지도는 지나온 단계까지만 번호·강조" || fail "지나온 길만"
 grep -q -- '--accent-soft' "$TPL" && grep -q '.node.cur rect.bg{fill:var(--accent-soft)' "$TPL" && pass "지금 단계 박스는 색을 채워 강조" || fail "지금 박스 강조"
 grep -q '<details id="rulesbox"' "$TPL" && pass "설계 규칙은 접어 둔다" || fail "규칙 접기"
+grep -q 'id: "fk-" + g' "$TPL" && grep -q 'function forkHtml' "$TPL" && grep -q 'data-hl' "$TPL" && grep -q 'data-play' "$TPL" && grep -q 'class: "forkmark"' "$TPL" \
+  && pass "갈림길 UI — 마름모 시작점·◆·갈라지는 목록·화살표 강조·다른 길 따라가기" || fail "갈림길 UI"
+grep -q 'const forks = id => (V.edges || \[\]).map((e, i) => \[e, i\]).filter((\[e\]) => e.kind === "branch" && (e.from === id || (NODE\[id\] && e.from === NODE\[id\].group)))' "$TPL" \
+  && pass "안쪽 박스는 속한 묶음의 갈림길도 보인다" || fail "묶음 갈림길"
 finish
